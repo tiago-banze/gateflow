@@ -11,21 +11,16 @@
  } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
  })();
  </script>
- <title>GateFlow - Bilheteira e Check-in por QR Code</title>
+ <title>GateFlow - Gestão de Convites e Check-in por QR Code</title>
  {% include "_og_meta.html" %}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
- <!-- Carregamento assíncrono (não bloqueia a renderização da página
-      enquanto busca a fonte no Google — evita o "flash" em branco/tela
-      errada ao navegar entre páginas). A página nasce já com a fonte de
-      sistema como fallback e troca suavemente assim que a Plus Jakarta
-      Sans terminar de carregar. -->
+ <!-- Carregamento assíncrono -->
  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
  <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
- <!-- Isolado: só a landing page carrega este ficheiro; nenhuma outra tela
-      do sistema é afetada por ele. -->
+ <!-- Isolado: só a landing page carrega este ficheiro -->
  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}" />
 {% if gateflow_logo_available %}
  <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
@@ -159,14 +154,14 @@
     <div class="lp-section-head">
       <div class="lp-section-eyebrow">O que oferecemos</div>
       <h2 class="lp-section-title">Tudo o que um evento precisa, num só lugar</h2>
-      <p class="lp-section-sub">Da venda do primeiro bilhete até ao último convidado a entrar na porta.</p>
+      <p class="lp-section-sub">Da lista de convidados até ao último acesso na porta.</p>
     </div>
 
     <div class="lp-services-grid">
       <div class="lp-service-card">
         <div class="lp-service-icon">🎟</div>
         <h3>Convites Digitais</h3>
-        <p>Cria a página do teu evento e emite convites digitais para cada convidado, com um QR Code seguro e unico pronto a enviar na hora.</p>
+        <p>Cria a página do teu evento e emite convites digitais para cada convidado, com um QR Code seguro e único pronto a enviar na hora.</p>
       </div>
       <div class="lp-service-card">
         <div class="lp-service-icon">📷</div>
@@ -193,12 +188,12 @@
       <div class="lp-step">
         <div class="lp-step-number">01</div>
         <h3>Escolha ou crie o seu evento</h3>
-        <p>Cadastre o evento, importe a lista de convidados ou ative a venda de bilhetes online.</p>
+        <p>Cadastre o evento e importe a lista de convidados em formato Excel.</p>
       </div>
       <div class="lp-step">
         <div class="lp-step-number">02</div>
-        <h3>Emita os bilhetes com QR Code</h3>
-        <p>Cada convidado recebe um bilhete digital com um QR Code único, pronto a imprimir ou a enviar por WhatsApp.</p>
+        <h3>Emita os convites com QR Code</h3>
+        <p>Cada convidado recebe um convite digital com um QR Code único, pronto a enviar por WhatsApp.</p>
       </div>
       <div class="lp-step">
         <div class="lp-step-number">03</div>
@@ -241,7 +236,7 @@
       <a href="{{ url_for('page_admin') if current_user and current_user.role == 'admin' else url_for('page_login', intent='admin') }}" class="lp-access-card">
         <div class="lp-access-icon">🛠</div>
         <h3>Administrador</h3>
-        <p>Cadastre eventos, importe convidados e gere os bilhetes com QR Code.</p>
+        <p>Cadastre eventos, importe convidados e gere os convites com QR Code.</p>
         <div class="lp-access-arrow">Aceder →</div>
       </a>
 
@@ -279,7 +274,7 @@
     </div>
 
     <div class="lp-testimonials-grid" id="lp-testimonials-grid" aria-live="polite">
-      {% for feedback in initial_feedbacks %}
+      {% for feedback in initial_feedbacks | default([]) %}
       <div class="lp-testimonial-card">
         <div class="lp-testimonial-head">
           <img class="lp-testimonial-avatar" src="{{ feedback.avatar_url }}" alt="" loading="lazy" width="44" height="44" />
@@ -310,7 +305,6 @@
       <button class="btn btn-secondary" id="lp-btn-close-testimonials-modal">✕ Fechar</button>
     </div>
     <div class="lp-testimonials-modal-list" id="lp-testimonials-modal-list" aria-live="polite">
-      <!-- Preenchido via JS só quando o modal é aberto (fetch sob demanda) -->
     </div>
   </div>
 </div>
