@@ -1,7 +1,7 @@
-<!-- Open Graph / Twitter Card — controla como o link aparece quando é
-     partilhado no WhatsApp, Facebook, etc. (título, descrição, imagem).
-     Cada página pode personalizar definindo as variáveis og_title e
-     og_description (via {% set %}) ANTES de incluir este parcial. -->
+{# Open Graph / Twitter Card — controla como o link aparece quando é
+   partilhado no WhatsApp, Facebook, etc. (título, descrição, imagem).
+   Cada página pode personalizar definindo as variáveis og_title e
+   og_description (via {% set og_title = "..." %}) ANTES de incluir este parcial. #}
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="GateFlow" />
 <meta property="og:title" content="{{ og_title | default('GateFlow — Gestão de Convites e Check-in por QR Code') }}" />
