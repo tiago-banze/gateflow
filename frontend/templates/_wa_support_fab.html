@@ -1,0 +1,10 @@
+<!-- Botão flutuante de suporte via WhatsApp — SUBST_AQUI: troca o número
+     após wa.me/258 pelo WhatsApp real de suporte, se for diferente do
+     rodapé (ex: um número dedicado a emergências durante o evento). -->
+<a
+  href="https://wa.me/258847388489?text={{ wa_support_message | default('Olá! Preciso de ajuda com o GateFlow.') | urlencode }}"
+  target="_blank"
+  rel="noopener"
+  class="wa-support-fab {{ 'wa-support-fab--left' if wa_support_left else '' }}"
+  title="Suporte via WhatsApp"
+>💬</a>

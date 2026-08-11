@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>Política de Privacidade - GateFlow</title>
+ {% set og_title = "Política de Privacidade - GateFlow" %}
+ {% set og_description = "Como o GateFlow recolhe, usa e protege os teus dados." %}
+ {% include "_og_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="legal-page-wrap">
+ <div class="legal-topbar">
+ <div class="legal-brand">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
+ </div>
+ <a href="{{ url_for('page_index') }}" class="legal-back-link">← Voltar ao Sistema</a>
+ </div>
+
+ <div class="legal-content">
+ <h1>Política de Privacidade</h1>
+ <p class="legal-updated">Última atualização: <span class="legal-placeholder">[INSERIR_DATA_AQUI]</span></p>
+
+ <p>
+ Aqui explicamos, sem juridiquês desnecessário, que dados o GateFlow
+ recolhe, para que servem e como são guardados. Se em algum momento este
+ texto parecer vago, é sinal de que precisamos de o reescrever — diz-nos.
+ </p>
+
+ <h2>1. Que dados recolhemos</h2>
+ <p>Dependendo de como usas o GateFlow, recolhemos:</p>
+ <ul>
+ <li><strong>Se és organizador ou porteiro:</strong> nome completo, e-mail, telefone, nome de usuário e palavra-passe (guardada de forma encriptada, nunca em texto simples).</li>
+ <li><strong>Se compras um bilhete:</strong> nome, e-mail e/ou telefone usados para receber o bilhete, e os dados da transação M-Pesa necessários para confirmar o pagamento (número de telemóvel usado no pagamento e valor — nunca o PIN do M-Pesa, que fica exclusivamente com a Vodacom/M-Pesa).</li>
+ <li><strong>Dados de uso do sistema:</strong> registos de check-in (quem validou, quando e onde), para permitir auditoria em caso de disputa sobre entrada em evento.</li>
+ <li><strong>Preferência de tema (claro/escuro):</strong> guardada só no teu próprio navegador (não é enviada para os nossos servidores).</li>
+ </ul>
+
+ <h2>2. Para que usamos esses dados</h2>
+ <ul>
+ <li>Emitir e validar bilhetes;</li>
+ <li>Processar pagamentos via M-Pesa e confirmar transações;</li>
+ <li>Enviar o bilhete e comunicações relacionadas ao evento comprado;</li>
+ <li>Prevenir fraude (por exemplo, detetar tentativas de reutilizar um QR Code já validado);</li>
+ <li>Cumprir obrigações legais, quando aplicável.</li>
+ </ul>
+ <p>
+ Não vendemos os teus dados a terceiros. Ponto final.
+ </p>
+
+ <h2>3. Com quem partilhamos dados</h2>
+ <p>
+ Partilhamos apenas o estritamente necessário, e apenas com:
+ </p>
+ <ul>
+ <li><strong>M-Pesa / Vodacom:</strong> para processar o pagamento do bilhete ou da taxa da plataforma;</li>
+ <li><strong>O organizador do evento:</strong> tem acesso à lista de compradores/convidados do próprio evento, para efeitos de gestão e check-in;</li>
+ <li><strong>Autoridades competentes:</strong> apenas quando exigido por lei.</li>
+ </ul>
+
+ <h2>4. Onde os dados ficam guardados</h2>
+ <p>
+ Os dados são guardados em servidores geridos por nós ou por fornecedores
+ de infraestrutura contratados para esse fim
+ <span class="legal-placeholder">[INSERIR_DETALHE_DO_FORNECEDOR/SERVIDOR_AQUI]</span>.
+ Aplicamos medidas técnicas razoáveis para proteger essa informação —
+ palavras-passe encriptadas, ligação segura (HTTPS) e controlo de acesso
+ por perfil de utilizador.
+ </p>
+
+ <h2>5. Por quanto tempo guardamos os dados</h2>
+ <p>
+ Mantemos os dados de conta enquanto ela estiver ativa, e os registos de
+ bilhetes/check-in pelo tempo necessário para efeitos de auditoria e
+ eventuais disputas sobre um evento — normalmente
+ <span class="legal-placeholder">[INSERIR_PRAZO_AQUI]</span> após a
+ realização do evento.
+ </p>
+
+ <h2>6. Os teus direitos</h2>
+ <p>Podes, a qualquer momento, pedir-nos para:</p>
+ <ul>
+ <li>Ver que dados temos sobre ti;</li>
+ <li>Corrigir dados desatualizados ou incorretos;</li>
+ <li>Apagar a tua conta e os dados associados, exceto o que formos obrigados a manter por lei ou por questões de segurança/auditoria de eventos já realizados.</li>
+ </ul>
+ <p>
+ Para exercer qualquer um destes direitos, escreve para
+ <a href="mailto:tiagovbanze@gmail.com">tiagovbanze@gmail.com</a>.
+ </p>
+
+ <h2>7. Cookies e armazenamento local</h2>
+ <p>
+ O GateFlow usa apenas armazenamento local do navegador (localStorage)
+ para lembrar a tua preferência de tema (claro/escuro) e a tua sessão de
+ acesso. Não usamos cookies de rastreamento publicitário nem partilhamos
+ dados de navegação com redes de publicidade.
+ </p>
+
+ <h2>8. Alterações a esta política</h2>
+ <p>
+ Se mudarmos a forma como tratamos os teus dados, atualizamos esta página
+ e a data no topo. Mudanças relevantes serão comunicadas de forma visível
+ na plataforma.
+ </p>
+
+ <h2>9. Fala connosco</h2>
+ <p>
+ Qualquer questão sobre privacidade pode ser enviada para
+ <a href="mailto:tiagovbanze@gmail.com">tiagovbanze@gmail.com</a> ou pelo
+ WhatsApp no rodapé desta página.
+ </p>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - {{ event.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body data-event-id="{{ event.id }}" data-event-module="{{ event.event_module }}">
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>{{ event.name }}</h1>
+ <div class="subtitle">Gerenciamento do Evento</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ <a href="{{ url_for('page_admin') }}">← Todos os Eventos</a>
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <a href="{{ url_for('page_admin') }}">Eventos</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">{{ event.name }}</span>
+ </nav>
+ <a href="{{ url_for('page_admin') }}" class="back-link">← Voltar aos Eventos</a>
+ <div class="card">
+ <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+ <div>
+ <div class="event-meta" style="font-size:0.95rem;">
+ {{ event.location or "Local não informado" }} &nbsp;|&nbsp;
+ <span id="event-date-display">{{ event.event_date }}</span>
+ &nbsp;|&nbsp;
+ <span class="badge {{ event.status.css_class }}" id="event-status-badge">{{ event.status.label }}</span>
+ </div>
+ <div class="stats-bar" id="detail-stats" style="margin-top:10px;"></div>
+ </div>
+ </div>
+ {% if event.status.code == 'encerrado' %}
+ <div class="event-ended-banner" style="margin-top:14px; margin-bottom:0;">
+ Este evento já foi encerrado - novos check-ins estão bloqueados. A tela abaixo é apenas para consulta e exportação de relatórios.
+ </div>
+ {% endif %}
+ </div>
+
+ {% if event.event_module == "A" %}
+ <div class="grid-2" id="module-a-actions">
+ <div class="card">
+ <h3 style="margin-top:0;">Importar Convidados (.xlsx)</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ A planilha deve conter as colunas: <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong>.
+ A coluna <strong>Mesa</strong> é opcional (se ausente ou vazia, o convidado recebe "Não definida").
+ Convidados já cadastrados neste evento (por e-mail, ou Nome+Telefone) são pulados automaticamente.
+ </p>
+ <div class="upload-drop">
+ <input type="file" id="input-xlsx" accept=".xlsx" />
+ </div>
+ <button class="btn btn-primary btn-block" style="margin-top:12px;" id="btn-import">
+ ⬆ Importar Lista de Convidados
+ </button>
+ </div>
+
+ <div class="card">
+ <h3 style="margin-top:0;">Documentos e Relatórios</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ Convites com QR Code, lista de contingência para impressão de emergência, e relatório de presença.
+ </p>
+ <div style="display:flex; flex-direction:column; gap:10px;">
+ <button class="btn btn-primary btn-block" id="btn-export-pdf">
+ ⬇ Baixar Documento de Convites
+ </button>
+ <button class="btn btn-secondary btn-block" id="btn-export-contingency">
+ ⬇ Baixar Lista de Contingência (PDF)
+ </button>
+ <button class="btn btn-secondary btn-block" id="btn-export-attendance">
+ ⬇ Baixar Relatório de Presença (CSV)
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <div class="card" id="module-a-manual-guest">
+ <h3 style="margin-top:0;">Cadastrar Convidado Manualmente</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem; margin-top:-4px;">
+ Use isto para adicionar um convidado avulso, sem precisar reimportar a planilha inteira.
+ </p>
+ <form id="form-new-guest">
+ <div class="grid-2">
+ <div>
+ <label for="guest-name">Nome Completo *</label>
+ <input type="text" id="guest-name" required placeholder="Ex: João Pedro Machava" />
+
+ <label for="guest-email">Email</label>
+ <input type="email" id="guest-email" placeholder="Ex: joao@email.com" />
+ </div>
+ <div>
+ <label for="guest-phone">Telefone</label>
+ <input type="tel" id="guest-phone" placeholder="Ex: 84 123 4567" />
+
+ <label for="guest-role">Cargo/Tipo</label>
+ <input type="text" id="guest-role" placeholder="Ex: Convidado, VIP, Imprensa..." />
+ </div>
+ </div>
+
+ <label for="guest-table">Mesa</label>
+ <input type="text" id="guest-table" placeholder='Ex: Mesa 05, Mesa VIP (deixe em branco para "Não definida")' />
+
+ <div class="form-row-inline">
+ <button type="submit" class="btn btn-primary" id="btn-save-guest">+ Adicionar Convidado</button>
+ </div>
+ </form>
+ </div>
+
+ <div class="card" id="module-a-guest-list">
+ <h3 style="margin-top:0;">Convidados</h3>
+ <div style="margin-bottom:12px;">
+ <input type="text" id="detail-search" placeholder="Buscar convidado por nome..." />
+ </div>
+ <div id="detail-guests-table"></div>
+ </div>
+ {% else %}
+ <div class="card" id="module-b-summary">
+ <h3 style="margin-top:0;">Bilheteira Online</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ Este evento é do Modelo B (bilheteira pública). A gestão de lotes de bilhetes, preços e
+ vendas online deste evento é feita no painel do Organizador responsável.
+ </p>
+ </div>
+ {% endif %}
+ </div>
+
+ <!-- ==================== MODAL DE EDIÇÃO DE CONVIDADO ==================== -->
+ <div class="modal-overlay hidden" id="edit-guest-modal">
+ <div class="modal-box">
+ <div class="modal-header">
+ <h3 style="margin:0;">Editar Convidado</h3>
+ <button class="btn btn-secondary" id="btn-close-edit-guest">✕ Fechar</button>
+ </div>
+ <form id="form-edit-guest">
+ <input type="hidden" id="edit-guest-id" />
+
+ <label for="edit-guest-name">Nome Completo *</label>
+ <input type="text" id="edit-guest-name" required />
+
+ <label for="edit-guest-email">Email</label>
+ <input type="email" id="edit-guest-email" />
+
+ <label for="edit-guest-phone">Telefone</label>
+ <input type="tel" id="edit-guest-phone" />
+
+ <label for="edit-guest-role">Cargo/Tipo</label>
+ <input type="text" id="edit-guest-role" />
+
+ <label for="edit-guest-table">Mesa</label>
+ <input type="text" id="edit-guest-table" />
+
+ <div class="form-row-inline">
+ <button type="submit" class="btn btn-primary btn-block" id="btn-save-edit-guest">✓ Salvar Alterações</button>
+ </div>
+ </form>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/admin_event_detail.js') }}"></script>
+</body>
+</html>

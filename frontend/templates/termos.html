@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>Termos de Uso - GateFlow</title>
+ {% set og_title = "Termos de Uso - GateFlow" %}
+ {% set og_description = "As regras claras de como funciona o uso do GateFlow, para organizadores, porteiros e compradores de bilhetes." %}
+ {% include "_og_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="legal-page-wrap">
+ <div class="legal-topbar">
+ <div class="legal-brand">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
+ </div>
+ <a href="{{ url_for('page_index') }}" class="legal-back-link">← Voltar ao Sistema</a>
+ </div>
+
+ <div class="legal-content">
+ <h1>Termos de Uso</h1>
+ <p class="legal-updated">Última atualização: <span class="legal-placeholder">[INSERIR_DATA_AQUI]</span></p>
+
+ <p>
+ Este documento explica, em linguagem direta, as regras de uso da
+ plataforma GateFlow. Ao criar uma conta, comprar um bilhete ou usar o
+ sistema de qualquer forma, estás a concordar com o que está escrito
+ aqui. Se alguma parte não ficar clara, prefere perguntar a assumir —
+ os nossos contactos estão no rodapé desta página.
+ </p>
+
+ <h2>1. Quem somos</h2>
+ <p>
+ O GateFlow é operado por
+ <span class="legal-placeholder">[INSERIR_NOME_DA_EMPRESA_OU_TITULAR_AQUI]</span>,
+ NUIT <span class="legal-placeholder">[INSERIR_NUIT_AQUI]</span>, com sede em
+ <span class="legal-placeholder">[INSERIR_ENDEREÇO_AQUI]</span>, Moçambique.
+ Ao longo deste documento, "nós", "a plataforma" ou "o GateFlow" referem-se
+ a esta empresa.
+ </p>
+
+ <h2>2. O que o GateFlow faz (e o que não faz)</h2>
+ <p>
+ Somos uma plataforma tecnológica: fornecemos as ferramentas para um
+ organizador vender bilhetes, receber pagamentos via M-Pesa e validar a
+ entrada dos convidados por QR Code. Não somos os organizadores dos
+ eventos listados na plataforma — cada evento é criado, gerido e é de
+ responsabilidade exclusiva do respetivo organizador.
+ </p>
+ <div class="legal-note">
+ Na prática: se um evento for cancelado, adiado ou não corresponder ao
+ anunciado, a responsabilidade é do organizador desse evento. Nós
+ ajudamos a mediar quando possível, mas o contrato de compra do bilhete
+ é entre o comprador e o organizador.
+ </div>
+
+ <h2>3. Contas de utilizador</h2>
+ <p>
+ Para criar e gerir eventos, é preciso uma conta de Organizador.
+ Porteiros são criados pelo Organizador ou pelo administrador da
+ plataforma, e só podem validar bilhetes dos eventos aos quais têm
+ acesso. Já para comprar bilhetes, não é preciso criar conta nenhuma.
+ </p>
+ <p>És responsável por:</p>
+ <ul>
+ <li>Manter a tua palavra-passe em sigilo e não partilhá-la com terceiros;</li>
+ <li>Fornecer dados verdadeiros no cadastro (nome, e-mail, telefone);</li>
+ <li>Tudo o que acontecer através da tua conta, incluindo ações da tua equipa de porteiros.</li>
+ </ul>
+
+ <h2>4. Pagamentos e taxas da plataforma</h2>
+ <p>
+ Organizadores que vendem bilhetes através do módulo de venda online pagam
+ uma taxa de utilização da plataforma, processada via M-Pesa. Essa taxa é
+ separada do valor do bilhete pago pelo comprador. Detalhes de valores e
+ prazos são combinados diretamente
+ <span class="legal-placeholder">[INSERIR_CONDIÇÕES_COMERCIAIS_AQUI]</span>.
+ </p>
+ <p>
+ Todo pagamento passa por confirmação junto ao gateway M-Pesa antes de o
+ bilhete ser emitido. Se uma transação falhar ou expirar, nenhum valor
+ fica retido pela plataforma — o próprio gateway M-Pesa trata o
+ estorno conforme as regras dele.
+ </p>
+
+ <h2>5. Bilhetes, reembolsos e cancelamentos</h2>
+ <p>
+ A política de reembolso de cada evento é definida pelo organizador
+ responsável por esse evento, não pelo GateFlow. Recomendamos sempre
+ conferir essa informação na página do evento antes de comprar. Um
+ bilhete já validado na portaria (check-in feito) não pode ser
+ reembolsado, por razões óbvias.
+ </p>
+
+ <h2>6. Uso aceitável</h2>
+ <p>Não é permitido usar o GateFlow para:</p>
+ <ul>
+ <li>Revender ou duplicar bilhetes fora da plataforma;</li>
+ <li>Tentar contornar, falsificar ou reproduzir os QR Codes de bilhetes;</li>
+ <li>Acessar contas, eventos ou dados de outros organizadores sem autorização;</li>
+ <li>Usar a plataforma para eventos ilegais ou que violem a lei moçambicana.</li>
+ </ul>
+ <p>
+ Contas que violem estas regras podem ser suspensas ou encerradas, com
+ aviso prévio sempre que possível.
+ </p>
+
+ <h2>7. Propriedade intelectual</h2>
+ <p>
+ O código, o design e a marca GateFlow pertencem à empresa responsável
+ pela plataforma. O conteúdo que um organizador publica (nome do evento,
+ descrição, imagens) continua sendo propriedade dele — nós só o exibimos
+ dentro da plataforma para viabilizar a venda dos bilhetes.
+ </p>
+
+ <h2>8. Limitação de responsabilidade</h2>
+ <p>
+ Fazemos o possível para manter o GateFlow disponível e funcionando, mas
+ não garantimos que o serviço estará livre de interrupções, erros ou
+ falhas de conectividade — inclusive porque partes do sistema (como a
+ confirmação de pagamento) dependem de serviços externos, como o M-Pesa.
+ Na medida permitida por lei, não respondemos por prejuízos indiretos
+ decorrentes do uso da plataforma.
+ </p>
+
+ <h2>9. Alterações a estes termos</h2>
+ <p>
+ Podemos atualizar este documento de tempos em tempos, normalmente para
+ refletir novas funcionalidades ou exigências legais. Quando isso
+ acontecer, atualizamos a data no topo da página. O uso contínuo da
+ plataforma depois de uma alteração significa que aceitas os novos
+ termos.
+ </p>
+
+ <h2>10. Lei aplicável</h2>
+ <p>
+ Estes termos são regidos pelas leis da República de Moçambique. Qualquer
+ disputa relacionada ao uso da plataforma será resolvida nos tribunais de
+ <span class="legal-placeholder">[INSERIR_CIDADE/FORO_AQUI]</span>.
+ </p>
+
+ <h2>11. Fala connosco</h2>
+ <p>
+ Dúvidas sobre estes termos podem ser enviadas para
+ <a href="mailto:tiagovbanze@gmail.com">tiagovbanze@gmail.com</a> ou pelo
+ WhatsApp no rodapé desta página.
+ </p>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+</body>
+</html>

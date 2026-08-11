@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>Eventos Disponíveis - GateFlow</title>
+ {% set og_title = "Eventos Disponíveis — GateFlow" %}
+ {% set og_description = "Vê todos os eventos com bilhetes à venda agora, compra online com M-Pesa e recebe o teu QR Code na hora." %}
+ {% include "_og_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/storefront.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body class="storefront-body">
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="storefront-wrap" id="catalog-root">
+
+ <header class="storefront-hero">
+ <div class="storefront-hero-brand">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" style="height:30px; vertical-align:middle;" />{% endif %}
+ </div>
+ <h1 class="storefront-hero-title">Eventos Disponíveis</h1>
+ <p class="storefront-hero-org">Navegue e compre os seus bilhetes online, sem precisar de conta.</p>
+ <a href="{{ url_for('page_index') }}" class="sf-view-all-link">← Voltar ao início</a>
+ </header>
+
+ <main class="storefront-main">
+
+ <nav class="sf-breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a> &gt; <span>Eventos</span>
+ </nav>
+
+ <div class="sf-catalog-toolbar">
+ <input type="search" id="catalog-search" class="sf-catalog-search" placeholder="Buscar por nome do evento…" />
+ </div>
+
+ <section class="sf-card" id="catalog-loading">
+ <p class="sf-muted">A carregar eventos disponíveis…</p>
+ </section>
+
+ <section class="sf-card sf-hidden" id="catalog-empty">
+ <p class="sf-muted sf-center">Não há eventos disponíveis para venda online neste momento. Volte em breve!</p>
+ </section>
+
+ <div class="sf-catalog-grid" id="catalog-grid"></div>
+
+ </main>
+
+ {% include "_footer.html" %}
+ </div>
+
+ {% set wa_support_message = "Olá! Preciso de ajuda para escolher/comprar um bilhete." %}
+ {% include "_wa_support_fab.html" %}
+
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/storefront_catalog.js') }}"></script>
+</body>
+</html>

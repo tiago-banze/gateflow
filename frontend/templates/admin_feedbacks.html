@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - Depoimentos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>Painel Administrativo</h1>
+ <div class="subtitle">Moderação de Depoimentos</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ {% if current_user %}
+ <span style="padding:10px 4px; font-size:0.85rem; opacity:0.9;"> {{ current_user.username }}</span>
+ {% endif %}
+ <a href="/checkin">Porteiro</a>
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <a href="{{ url_for('page_admin') }}">Eventos</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">Depoimentos</span>
+ </nav>
+ <div class="nav-tabs">
+ <a href="{{ url_for('page_admin') }}"> Eventos</a>
+ <a href="{{ url_for('page_admin_users') }}"> Usuários</a>
+ <a href="{{ url_for('page_admin_feedbacks') }}" class="active"> Depoimentos</a>
+ </div>
+
+ <!-- ==================== FILA DE MODERAÇÃO ==================== -->
+ <div class="card">
+ <h2>Depoimentos Pendentes</h2>
+ <p style="color:var(--color-text-muted); font-size:0.85rem; margin-top:-8px;">
+ Só aparecem na landing page depois de aprovados aqui.
+ </p>
+ <div id="pending-feedbacks-list" aria-busy="true" aria-live="polite">
+ <!-- Preenchido via SSR abaixo (window.__INITIAL_PENDING_FEEDBACKS__) e
+      atualizado pelo admin_feedbacks.js a cada aprovação/rejeição. -->
+ <p class="empty-state">A carregar…</p>
+ </div>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ {% if initial_pending_feedbacks is not none %}
+ <script>
+ // Fila de moderação já pronta do servidor (SSR) -- mesmo padrão usado em
+ // /admin e /checkin -- pinta a lista real no primeiro paint, sem
+ // esperar por um fetch('/api/admin/feedbacks/pending').
+ window.__INITIAL_PENDING_FEEDBACKS__ = {{ initial_pending_feedbacks|tojson }};
+ </script>
+ {% endif %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/admin_feedbacks.js') }}"></script>
+</body>
+</html>

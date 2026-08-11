@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>{{ "Convite expirado" if expired else "Confirme a sua presença" }} — {{ guest.event_name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" />
+<style>
+  :root {
+    --rsvp-primary: #7C5CBF;
+    --rsvp-primary-dark: #5B3E96;
+    --rsvp-accent: #E8B14C;
+    --rsvp-bg: #FBF8FF;
+    --rsvp-card: #FFFFFF;
+    --rsvp-text: #2B2440;
+    --rsvp-text-muted: #766E8C;
+    --rsvp-success: #2E9E5B;
+    --rsvp-decline: #C4526A;
+    --rsvp-border: #EAE3F7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    background: linear-gradient(180deg, var(--rsvp-primary) 0%, var(--rsvp-primary) 220px, var(--rsvp-bg) 220px);
+    color: var(--rsvp-text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 0 0 60px;
+  }
+  .rsvp-wrap { width: 100%; max-width: 480px; padding: 0 18px; }
+  .rsvp-hero { text-align: center; padding: 48px 12px 28px; color: #fff; }
+  .rsvp-hero .eyebrow {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.85; font-weight: 600;
+  }
+  .rsvp-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: 1.9rem; font-weight: 700; margin: 10px 0 6px; line-height: 1.25;
+  }
+  .rsvp-hero .sub { font-size: 0.95rem; opacity: 0.92; }
+
+  .rsvp-card {
+    background: var(--rsvp-card);
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(91, 62, 150, 0.14);
+    padding: 26px 22px;
+    margin-top: -70px;
+  }
+  .rsvp-detail-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--rsvp-border);
+    font-size: 0.92rem;
+  }
+  .rsvp-detail-row:last-child { border-bottom: none; }
+  .rsvp-detail-row .icon { font-size: 1.15rem; line-height: 1.3; }
+  .rsvp-detail-row .label { color: var(--rsvp-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .rsvp-detail-row .value { font-weight: 600; }
+  .rsvp-detail-row a { color: var(--rsvp-primary); text-decoration: none; font-weight: 600; }
+
+  .rsvp-greeting { text-align: center; margin: 24px 0 18px; font-size: 1rem; }
+  .rsvp-greeting strong { color: var(--rsvp-primary-dark); }
+
+  .rsvp-choices { display: flex; gap: 12px; margin-top: 18px; }
+  .rsvp-choice-btn {
+    flex: 1; border: 2px solid var(--rsvp-border); background: #fff; border-radius: 14px;
+    padding: 18px 10px; font-family: inherit; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s ease; color: var(--rsvp-text);
+    min-height: var(--tap-min, 48px);
+  }
+  .rsvp-choice-btn .emoji { display: block; font-size: 1.6rem; margin-bottom: 6px; }
+  .rsvp-choice-btn.yes:hover, .rsvp-choice-btn.yes.selected { border-color: var(--rsvp-success); background: #EEFAF2; color: var(--rsvp-success); }
+  .rsvp-choice-btn.no:hover, .rsvp-choice-btn.no.selected { border-color: var(--rsvp-decline); background: #FBEEF1; color: var(--rsvp-decline); }
+
+  .rsvp-companions { margin-top: 20px; display: none; }
+  .rsvp-companions.visible { display: block; }
+  .rsvp-companions label { font-size: 0.85rem; color: var(--rsvp-text-muted); font-weight: 600; }
+  .rsvp-stepper { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 10px; }
+  .rsvp-stepper button {
+    width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--rsvp-primary);
+    background: #fff; color: var(--rsvp-primary); font-size: 1.3rem; font-weight: 700; cursor: pointer;
+  }
+  .rsvp-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .rsvp-stepper .count { font-size: 1.4rem; font-weight: 800; min-width: 32px; text-align: center; }
+
+  .rsvp-submit-btn {
+    width: 100%; margin-top: 22px; padding: 15px; border: none; border-radius: 14px;
+    background: var(--rsvp-primary); color: #fff; font-family: inherit; font-size: 1rem; font-weight: 700;
+    cursor: pointer; min-height: var(--tap-min, 48px);
+  }
+  .rsvp-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rsvp-submit-btn:not(:disabled):hover { background: var(--rsvp-primary-dark); }
+
+  .rsvp-result { text-align: center; padding: 20px 6px; }
+  .rsvp-result .icon { font-size: 3rem; }
+  .rsvp-result h2 { font-family: "Playfair Display", serif; margin: 10px 0 6px; }
+  .rsvp-result p { color: var(--rsvp-text-muted); font-size: 0.93rem; }
+
+  .rsvp-error {
+    margin-top: 14px; background: #FBEEF1; color: var(--rsvp-decline); border-radius: 10px;
+    padding: 10px 12px; font-size: 0.85rem; display: none;
+  }
+  .rsvp-error.visible { display: block; }
+
+  .rsvp-footer { text-align: center; margin-top: 22px; font-size: 0.75rem; color: var(--rsvp-text-muted); }
+
+  .rsvp-expired-wrap { text-align: center; padding: 80px 20px 40px; color: #fff; }
+  .rsvp-expired-wrap .icon { font-size: 3rem; }
+  .rsvp-expired-wrap h1 { font-family: "Playfair Display", serif; font-size: 1.6rem; margin: 14px 0 8px; }
+  .rsvp-expired-wrap p { opacity: 0.92; font-size: 0.95rem; }
+</style>
+</head>
+<body>
+{% if expired %}
+  <div class="rsvp-wrap">
+    <div class="rsvp-expired-wrap">
+      <div class="icon">⏳</div>
+      <h1>O prazo para confirmar presença já terminou</h1>
+      <p>O período de confirmação para <strong>{{ guest.event_name }}</strong> já foi encerrado. Se acha que isto é um engano, contacte diretamente a organização do evento.</p>
+    </div>
+  </div>
+{% else %}
+  <div class="rsvp-wrap">
+    <div class="rsvp-hero">
+      <div class="eyebrow">Você está convidado(a)</div>
+      <h1>{{ guest.event_name }}</h1>
+      <div class="sub">Confirme a sua presença abaixo</div>
+    </div>
+
+    <div class="rsvp-card">
+      <div class="rsvp-detail-row">
+        <span class="icon">📅</span>
+        <div><div class="label">Data e hora</div><div class="value" id="rsvp-event-date">{{ guest.event_date }}</div></div>
+      </div>
+      {% if guest.location %}
+      <div class="rsvp-detail-row">
+        <span class="icon">📍</span>
+        <div>
+          <div class="label">Local</div>
+          <div class="value">
+            {{ guest.location }}
+            {% if guest.location_maps_url %}<br /><a href="{{ guest.location_maps_url }}" target="_blank" rel="noopener">Ver no mapa →</a>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% if guest.table_name %}
+      <div class="rsvp-detail-row">
+        <span class="icon">🪑</span>
+        <div><div class="label">A sua mesa</div><div class="value">{{ guest.table_name }}</div></div>
+      </div>
+      {% endif %}
+
+      <div id="rsvp-form-section">
+        <div class="rsvp-greeting">Olá, <strong>{{ guest.full_name }}</strong> — vai poder estar presente?</div>
+
+        <div class="rsvp-choices">
+          <button type="button" class="rsvp-choice-btn yes" id="btn-yes"><span class="emoji">🎉</span>Vou estar lá</button>
+          <button type="button" class="rsvp-choice-btn no" id="btn-no"><span class="emoji">😢</span>Não vou poder</button>
+        </div>
+
+        {% if guest.companions_allowed and guest.companions_allowed > 0 %}
+        <div class="rsvp-companions" id="companions-block">
+          <label>Quantos acompanhantes vai levar? (máx. {{ guest.companions_allowed }})</label>
+          <div class="rsvp-stepper">
+            <button type="button" id="btn-minus">−</button>
+            <span class="count" id="companions-count">0</span>
+            <button type="button" id="btn-plus">+</button>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="rsvp-error" id="rsvp-error"></div>
+        <button type="button" class="rsvp-submit-btn" id="btn-submit" disabled>Confirmar resposta</button>
+      </div>
+
+      <div class="rsvp-result" id="rsvp-result" style="display:none;"></div>
+    </div>
+
+    <div class="rsvp-footer">Powered by GateFlow</div>
+  </div>
+
+  <script>
+    const guestData = {
+      companionsAllowed: {{ (guest.companions_allowed or 0) | tojson }},
+      eventDate: {{ guest.event_date | tojson }},
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/rsvp.js') }}"></script>
+{% endif %}
+</body>
+</html>

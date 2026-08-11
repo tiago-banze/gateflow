@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - Algo correu mal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+ <div class="landing">
+ <div class="card" style="max-width:440px; width:100%; text-align:center;">
+ <div style="font-size:2.6rem; margin-bottom:8px;">⚠</div>
+ <h2>Algo correu mal do nosso lado</h2>
+ <p style="color:var(--color-text-muted);">
+ Não foi um erro teu — tivemos um problema interno ao processar este
+ pedido. Já fomos notificados. Tenta novamente em alguns instantes; se o
+ problema continuar, fala connosco pelo WhatsApp no rodapé.
+ </p>
+ <div class="form-row-inline" style="justify-content:center;">
+ <a href="/" class="btn btn-primary">← Voltar ao início</a>
+ </div>
+ </div>
+ </div>
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+</body>
+</html>

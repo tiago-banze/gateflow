@@ -1,0 +1,38 @@
+# ==============================================================================
+# scripts/gateflow.service
+# Unidade systemd para rodar o GateFlow (Gunicorn) como servico gerenciado,
+# com reinicio automatico em caso de falha.
+#
+# Instalacao:
+#   sudo cp scripts/gateflow.service /etc/systemd/system/gateflow.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gateflow
+#
+# Logs:
+#   journalctl -u gateflow -f
+# ==============================================================================
+
+[Unit]
+Description=GateFlow - Plataforma SaaS de Bilheteira e Controlo de Acessos
+After=network.target
+
+[Service]
+Type=notify
+User=gateflow
+Group=gateflow
+WorkingDirectory=/opt/gateflow/checkin_system/backend
+EnvironmentFile=/opt/gateflow/checkin_system/backend/.env
+ExecStart=/opt/gateflow/venv/bin/gunicorn -c gunicorn_config.py app:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+# Hardening basico do systemd
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/gateflow/checkin_system/backend/data /opt/gateflow/checkin_system/backend/exports /opt/gateflow/checkin_system/backend/uploads /opt/gateflow/checkin_system/frontend/static/uploads
+
+[Install]
+WantedBy=multi-user.target

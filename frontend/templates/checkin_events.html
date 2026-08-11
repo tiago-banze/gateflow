@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - Eventos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>Painel do Porteiro</h1>
+ <div class="subtitle">Selecione o evento para trabalhar</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ {% if current_user %}
+ <span style="padding:10px 4px; font-size:0.85rem; opacity:0.9;"> {{ current_user.username }}</span>
+ {% if current_user.role == 'admin' %}<a href="/admin">Admin</a>{% endif %}
+ {% endif %}
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">Check-in</span>
+ </nav>
+ <!-- ==================== PRÓXIMO EVENTO (DASHBOARD DINÂMICO) ==================== -->
+ <div id="next-event-card" class="next-event-card hidden">
+ <div class="next-event-label">Próximo Evento</div>
+ <div class="next-event-name" id="next-event-name"></div>
+ <div class="next-event-meta" id="next-event-meta"></div>
+ <div class="countdown-grid" id="next-event-countdown">
+ <div class="countdown-unit"><div class="countdown-value" id="cd-days">--</div><div class="countdown-label">Dias</div></div>
+ <div class="countdown-unit"><div class="countdown-value" id="cd-hours">--</div><div class="countdown-label">Horas</div></div>
+ <div class="countdown-unit"><div class="countdown-value" id="cd-minutes">--</div><div class="countdown-label">Min</div></div>
+ <div class="countdown-unit"><div class="countdown-value" id="cd-seconds">--</div><div class="countdown-label">Seg</div></div>
+ </div>
+ <div class="next-event-actions" id="next-event-actions"></div>
+ </div>
+
+ <div class="card">
+ <h2>Todos os Eventos</h2>
+ <div id="events-list" class="event-list" aria-busy="true" aria-live="polite">
+ <!-- Skeleton: ocupa a estrutura e a largura reais da lista desde o
+      primeiro milissegundo (antes mesmo do JS correr), evitando o
+      "salto" de layout quando os eventos chegam da API. checkin_events.js
+      substitui isto pela lista real com uma transição suave (fade), via
+      renderEventsListWithFade() em common.js. -->
+ <div class="skeleton-item">
+ <div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div>
+ <div class="skeleton-line skeleton-line--btn"></div>
+ </div>
+ <div class="skeleton-item">
+ <div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div>
+ <div class="skeleton-line skeleton-line--btn"></div>
+ </div>
+ <div class="skeleton-item">
+ <div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div>
+ <div class="skeleton-line skeleton-line--btn"></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ {% if initial_events is not none %}
+ <script>
+ // Eventos já carregados no servidor (SSR) junto com este HTML — permite
+ // ao checkin_events.js pintar a lista real no primeiro paint, sem
+ // esperar por um fetch('/api/events') nem mostrar o skeleton.
+ window.__INITIAL_EVENTS__ = {{ initial_events|tojson }};
+ </script>
+ {% endif %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/checkin_events.js') }}"></script>
+</body>
+</html>

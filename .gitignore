@@ -1,0 +1,14 @@
+# Ambientes e Variáveis Seguras
+.env
+backend/.env
+*.env
+
+# Python / Caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Vercel e IDEs
+.vercel
+.vscode/
+.idea/

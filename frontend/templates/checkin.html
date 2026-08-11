@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - {{ event.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+ <!-- defer: sem isto, o navegador tinha de baixar e executar esta
+      biblioteca externa (CDN) ANTES de continuar a interpretar o resto
+      do <body>, atrasando a primeira renderização da página e
+      contribuindo para o "flash" reportado ao entrar nesta tela. -->
+ <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body data-event-id="{{ event.id }}" data-event-status="{{ event.status.code }}">
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>{{ event.name }}</h1>
+ <div class="subtitle">Check-in de Convidados</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ <a href="{{ url_for('page_checkin') }}">← Todos os Eventos</a>
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <a href="{{ url_for('page_checkin') }}">Check-in</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">{{ event.name }}</span>
+ </nav>
+ <a href="{{ url_for('page_checkin') }}" class="back-link">← Voltar aos Eventos</a>
+ {% if event.status.code == 'encerrado' %}
+ <div class="event-ended-banner">
+ Este evento já foi encerrado - <strong>novos check-ins estão bloqueados</strong>.
+ Esta tela mostra apenas as estatísticas finais (quem compareceu e quem faltou).
+ </div>
+ {% endif %}
+
+ <div class="stats-bar" id="stats-bar"></div>
+ <div class="offline-indicator hidden" id="offline-indicator"></div>
+
+ <div class="card" id="live-stats-card">
+   <h3 style="margin-top:0;">Portaria em Tempo Real</h3>
+   <div class="stats-bar" id="live-stats-bar"></div>
+   <div id="live-stats-chart" style="margin-top:14px;"></div>
+ </div>
+
+ <div class="search-bar">
+ <input type="text" id="search-input" placeholder=" Buscar convidado pelo nome..." />
+ </div>
+
+ <!-- Telas grandes: tabela clássica -->
+ <div id="guests-table-view" class="table-responsive desktop-only">
+ <table>
+ <thead>
+ <tr>
+ <th>Nome</th>
+ <th>Cargo / Tipo</th>
+ <th>Mesa</th>
+ <th>Ações</th>
+ </tr>
+ </thead>
+ <tbody id="guests-table-body"></tbody>
+ </table>
+ </div>
+
+ <!-- Telas pequenas: cards otimizados para toque -->
+ <div id="guests-container" class="guest-grid mobile-only"></div>
+ <div id="guests-empty" class="empty-state hidden">Nenhum convidado encontrado.</div>
+ </div>
+
+ {% include "_footer.html" %}
+
+ <!-- Botão flutuante de scanner (escondido se o evento já encerrou) -->
+ <button class="scan-fab {{ 'hidden' if event.status.code == 'encerrado' else '' }}" id="btn-open-scanner" title="Ler QR Code">📷</button>
+
+ <!-- Modal do Scanner -->
+ <div class="modal-overlay hidden" id="scanner-modal">
+ <div class="modal-box">
+ <div class="modal-header">
+ <h3 style="margin:0;">Ler QR Code do Convidado</h3>
+ <button class="btn btn-secondary" id="btn-close-scanner">✕ Fechar</button>
+ </div>
+ <div id="qr-reader"></div>
+ <p style="color:var(--color-text-muted); font-size:0.85rem; margin-top:10px;">
+ Aponte a câmera para o QR Code impresso ou exibido no smartphone do convidado.
+ </p>
+ </div>
+ </div>
+
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/offline_checkin.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/checkin.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - Usuários</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>Painel Administrativo</h1>
+ <div class="subtitle">Gerenciamento de Usuários</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ {% if current_user %}
+ <span style="padding:10px 4px; font-size:0.85rem; opacity:0.9;"> {{ current_user.username }}</span>
+ {% endif %}
+ <a href="/checkin">Porteiro</a>
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <a href="{{ url_for('page_admin') }}">Eventos</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">Usuários</span>
+ </nav>
+ <div class="nav-tabs">
+ <a href="{{ url_for('page_admin') }}"> Eventos</a>
+ <a href="{{ url_for('page_admin_users') }}" class="active"> Usuários</a>
+ <a href="{{ url_for('page_admin_feedbacks') }}"> Depoimentos</a>
+ </div>
+
+ <!-- ==================== NOVO USUÁRIO ==================== -->
+ <div class="card">
+ <h2>Novo Usuário</h2>
+ <p style="color:var(--color-text-muted); font-size:0.85rem; margin-top:-8px;">
+ Qualquer usuário com perfil "Admin" pode criar novos perfis de acesso.
+ </p>
+ <form id="form-new-user">
+ <label for="user-fullname">Nome Completo</label>
+ <input type="text" id="user-fullname" placeholder="Ex: Maria da Silva" />
+
+ <label for="user-username">Usuário (login) *</label>
+ <input type="text" id="user-username" required placeholder="Ex: maria.silva" autocomplete="off" />
+
+ <label for="user-role">Tipo de Acesso *</label>
+ <select id="user-role" required style="width:100%; padding:12px 14px; font-size:1rem; border:2px solid #E5E7EB; border-radius:10px; min-height:48px; background:#fff;">
+ <option value="porteiro">Porteiro</option>
+ <option value="admin">Administrador</option>
+ </select>
+
+ <label for="user-password">Senha Provisória * (mín. 8 caracteres)</label>
+ <input type="text" id="user-password" required minlength="8" placeholder="Ex: Portao@2026" autocomplete="off" />
+
+ <div class="form-row-inline">
+ <button type="submit" class="btn btn-primary" id="btn-save-user">+ Criar Usuário</button>
+ </div>
+ </form>
+ </div>
+
+ <!-- ==================== USUÁRIOS CADASTRADOS ==================== -->
+ <div class="card">
+ <h2>Usuários Cadastrados</h2>
+ <div id="users-list"></div>
+ </div>
+
+ <!-- ==================== SEGURANÇA: KILL SWITCH DE SESSÕES ==================== -->
+ <div class="card">
+ <h2>Segurança da Sessão</h2>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ Encerra <strong>todas</strong> as sessões ativas de <strong>todos</strong> os aparelhos
+ (inclusive a sua) - todo mundo precisará fazer login novamente. Use isto ao final de um
+ evento, se um tablet for perdido/roubado, ou depois de testes, antes de entregar os
+ aparelhos para uso real.
+ </p>
+ <button class="btn btn-danger" id="btn-invalidate-sessions">⏻ Encerrar Todas as Sessões</button>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/admin_users.js') }}"></script>
+</body>
+</html>

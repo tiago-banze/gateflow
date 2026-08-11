@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>Sobre o GateFlow</title>
+ {% set og_title = "Sobre o GateFlow" %}
+ {% set og_description = "Conhece a plataforma de bilhetes e check-in que estás a usar: como funciona, o que a torna segura e por que existe." %}
+ {% include "_og_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="legal-page-wrap">
+ <div class="legal-topbar">
+ <div class="legal-brand">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
+ </div>
+ <a href="{{ url_for('page_index') }}" class="legal-back-link">← Voltar ao Sistema</a>
+ </div>
+
+ <div class="legal-content">
+ <div class="about-hero">
+ <h1>Sobre o GateFlow</h1>
+ <p>
+ O GateFlow nasceu de um problema bem concreto: a fila da entrada de um evento
+ é o pior lugar para descobrir que um bilhete é falso, ou que já entrou há
+ vinte minutos. Construímos uma plataforma que resolve isso do início ao fim —
+ da venda do bilhete até o "pode entrar" na portaria.
+ </p>
+ </div>
+
+ <h2>Como funciona, em 3 passos</h2>
+ <div class="about-steps">
+ <div class="about-step">
+ <div class="about-step-num">1</div>
+ <h3>O organizador cria o evento</h3>
+ <p>Define lugares, preços e capacidade. Se for um evento pago, o pagamento é feito via M-Pesa, direto na plataforma.</p>
+ </div>
+ <div class="about-step">
+ <div class="about-step-num">2</div>
+ <h3>O bilhete chega com QR Code único</h3>
+ <p>Cada bilhete emitido tem um código criptografado que só existe uma vez — impossível de copiar ou reutilizar.</p>
+ </div>
+ <div class="about-step">
+ <div class="about-step-num">3</div>
+ <h3>A entrada é validada na hora</h3>
+ <p>O porteiro lê o QR Code com a câmara do telemóvel. Se já foi usado, o sistema recusa e avisa — na mesma hora.</p>
+ </div>
+ </div>
+
+ <h2>Por que a segurança do QR Code importa</h2>
+ <p>
+ Um bilhete de papel pode ser fotocopiado. Um PDF pode ser reenviado para dez
+ amigos. O QR Code do GateFlow não funciona assim: cada código é assinado
+ digitalmente e fica marcado como "usado" no instante em que passa na
+ portaria. Se alguém tentar entrar com o mesmo bilhete pela segunda vez —
+ mesmo que seja uma cópia perfeita da imagem — o sistema recusa e mostra
+ exatamente quando e onde aquele código já foi validado.
+ </p>
+
+ <h2>Quem usa o GateFlow</h2>
+ <p>
+ Promotores e produtoras de eventos que vendem bilhetes online e precisam de
+ controlar a entrada sem depender de listas em papel ou planilhas. Cada
+ organizador gere só os seus próprios eventos e a sua própria equipa de
+ porteiros — sem ver nem interferir nos eventos de outros promotores na
+ plataforma.
+ </p>
+
+ <h2>E se a internet cair na portaria?</h2>
+ <p>
+ É a pergunta que mais nos fazem, e com razão. Estamos a trabalhar para que a
+ leitura de QR Code continue a funcionar mesmo com internet instável,
+ sincronizando os check-ins assim que a ligação voltar. Se quiseres saber o
+ estado atual dessa funcionalidade, fala connosco pelo WhatsApp no rodapé.
+ </p>
+
+ <h2>Uma equipa pequena, construindo com cuidado</h2>
+ <p>
+ Não somos uma multinacional com departamento de marketing — somos uma
+ equipa pequena a construir uma ferramenta que usamos e testamos nós
+ próprios. Se encontrares algo que não faz sentido, ou tiveres uma ideia
+ para melhorar o sistema, escreve-nos. É assim que o GateFlow tem evoluído
+ até aqui.
+ </p>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+</body>
+</html>

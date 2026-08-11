@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - Acesso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body>
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="login-page-wrap">
+
+ <div class="login-page-header">
+ {% if gateflow_logo_available %}
+ <img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="brand-logo-hero" alt="GateFlow" />
+ {% else %}
+ <div class="login-brand-icon">GF</div>
+ {% endif %}
+ </div>
+
+ <!-- ==================== PAINEL DESLIZANTE (ponto único de acesso) ==================== -->
+ <div class="login-slider-container {{ 'right-panel-active' if active_panel == 'signup' else '' }}" id="login-container">
+
+ <!-- Estado da aba ativa no mobile (CSS-only, sem dependência de JS para o layout) -->
+ <input type="radio" name="login-mobile-tab" id="login-tab-signin" class="login-mobile-tab-radio" {{ 'checked' if active_panel != 'signup' else '' }} />
+ <input type="radio" name="login-mobile-tab" id="login-tab-signup" class="login-mobile-tab-radio" {{ 'checked' if active_panel == 'signup' else '' }} />
+
+ <div class="login-mobile-tabs">
+ <div class="login-mobile-tab-slider"></div>
+ <label for="login-tab-signin">Entrar</label>
+ <label for="login-tab-signup">Cadastrar</label>
+ </div>
+
+ <div class="login-mobile-slide-window">
+ <div class="login-mobile-slide-track">
+
+ <!-- ---------- SIGN IN ---------- -->
+ <div class="login-form-container sign-in-container">
+ <form method="POST" action="{{ url_for('page_login') }}">
+ <h1 class="form-title">Entrar no GateFlow</h1>
+ <p class="form-subtitle">Acesso único para Administradores, Organizadores e Porteiros.</p>
+
+ {% if error %}
+ <div class="login-error-box"> {{ error }}</div>
+ {% endif %}
+
+ <label for="username">Usuário</label>
+ <input type="text" id="username" name="username" value="{{ request.form.username if error else '' }}" autocomplete="username" required {{ 'autofocus' if active_panel != 'signup' else '' }} />
+
+ <label for="password">Senha</label>
+ <input type="password" id="password" name="password" autocomplete="current-password" required />
+
+ <button type="submit" class="btn btn-primary btn-block btn-lg login-submit" style="margin-top:20px;">→ Entrar</button>
+ </form>
+ <div class="login-mobile-tabs-footnote login-form-footnote">
+ Ainda não tem conta? <a href="#" data-panel-switch="signup">Criar Conta</a>
+ </div>
+ </div>
+
+ <!-- ---------- SIGN UP (Organizador) ---------- -->
+ <div class="login-form-container sign-up-container">
+ <form method="POST" action="{{ url_for('page_organizador_signup') }}">
+ <h1 class="form-title">Criar Conta de Organizador</h1>
+ <p class="form-subtitle">Cadastre-se para criar e gerenciar seus próprios eventos.</p>
+
+ {% if signup_error %}
+ <div class="login-error-box"> {{ signup_error }}</div>
+ {% endif %}
+
+ <label for="full_name">Nome Completo *</label>
+ <input type="text" id="full_name" name="full_name" required placeholder="Ex: Maria da Silva" value="{{ request.form.full_name if signup_error else '' }}" {{ 'autofocus' if active_panel == 'signup' else '' }} />
+
+ <label for="email">E-mail *</label>
+ <input type="email" id="email" name="email" required placeholder="Ex: maria@empresa.com" value="{{ request.form.email if signup_error else '' }}" autocomplete="email" />
+
+ <label for="signup_username">Usuário (login) *</label>
+ <input type="text" id="signup_username" name="username" required placeholder="Ex: maria.eventos" value="{{ request.form.username if signup_error else '' }}" autocomplete="off" />
+
+ <label for="phone">Telefone / WhatsApp</label>
+ <input type="tel" id="phone" name="phone" placeholder="Ex: 84 123 4567" value="{{ request.form.phone if signup_error else '' }}" />
+
+ <label for="signup_password">Senha * (mín. 8 caracteres)</label>
+ <input type="password" id="signup_password" name="password" required minlength="8" autocomplete="new-password" />
+
+ <label for="password_confirm">Confirmar Senha *</label>
+ <input type="password" id="password_confirm" name="password_confirm" required minlength="8" autocomplete="new-password" />
+
+ <button type="submit" class="btn btn-primary btn-block btn-lg login-submit">+ Criar Conta</button>
+ </form>
+ <div class="login-mobile-tabs-footnote login-form-footnote">
+ Já tem conta? <a href="#" data-panel-switch="signin">Entrar</a>
+ </div>
+ </div>
+
+ </div>
+ </div>
+
+ <!-- ---------- OVERLAY (só desktop/tablet) ---------- -->
+ <div class="login-overlay-container">
+ <div class="login-overlay">
+ <div class="login-overlay-panel login-overlay-left">
+ <h2>Já tem conta?</h2>
+ <p>Entre com seu usuário e senha para acessar seu painel de Administrador, Organizador ou Porteiro.</p>
+ <button class="login-ghost-btn" id="signIn" type="button">Entrar</button>
+ </div>
+ <div class="login-overlay-panel login-overlay-right">
+ <h2>Novo por aqui?</h2>
+ <p>Crie sua conta de Organizador gratuitamente e comece a vender bilhetes com check-in por QR Code.</p>
+ <button class="login-ghost-btn" id="signUp" type="button">Criar Conta</button>
+ </div>
+ </div>
+ </div>
+
+ </div>
+
+ <a href="{{ url_for('page_index') }}" class="login-form-footnote" style="margin-top:4px;">← Voltar ao início</a>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

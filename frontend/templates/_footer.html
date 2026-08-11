@@ -1,0 +1,29 @@
+<!-- ==========================================================================
+     _footer.html — rodapé institucional, incluído em todas as páginas.
+     GUIA RÁPIDO: os únicos dados que precisas de trocar estão marcados
+     abaixo com SUBST_AQUI. Procura por esse texto neste ficheiro.
+     ========================================================================== -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="site-footer-brand">
+      {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
+    </div>
+
+    <nav class="site-footer-links" aria-label="Links institucionais">
+      <a href="{{ url_for('page_sobre') }}">Sobre o Sistema</a>
+      <a href="{{ url_for('page_termos') }}">Termos de Uso</a>
+      <a href="{{ url_for('page_privacidade') }}">Política de Privacidade</a>
+    </nav>
+
+    <div class="site-footer-contact">
+      <!-- SUBST_AQUI: troca o número após wa.me/258 pelo teu WhatsApp real -->
+      <a href="https://wa.me/258847388489" target="_blank" rel="noopener" title="Falar no WhatsApp">💬</a>
+      <!-- SUBST_AQUI: troca pelo teu e-mail real -->
+      <a href="mailto:tiagovbanze@gmail.com" title="Enviar e-mail">✉</a>
+    </div>
+  </div>
+
+  <div class="site-footer-bottom">
+    Desenvolvido por Tiago Banze · © 2026 GateFlow. Todos os direitos reservados.
+  </div>
+</footer>

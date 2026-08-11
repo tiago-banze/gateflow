@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>{{ event.name }} - Bilhetes | GateFlow</title>
+ {% set og_title = event.name + " — Bilhetes | GateFlow" %}
+ {% set og_description = "Compra o teu bilhete para " + event.name + (" em " + event.location if event.location else "") + ", com pagamento M-Pesa e QR Code seguro." %}
+ {% include "_og_meta.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/storefront.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body class="storefront-body">
+ <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+
+ <div class="storefront-wrap" id="storefront-root" data-event-slug="{{ event.slug }}">
+
+ <header class="storefront-hero">
+ <div class="storefront-hero-brand">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" style="height:30px; vertical-align:middle;" />{% endif %}
+ </div>
+ <h1 class="storefront-hero-title" id="sf-event-name">{{ event.name }}</h1>
+ <p class="storefront-hero-org" id="sf-event-org"></p>
+ <a href="{{ url_for('storefront_catalog_page') }}" class="sf-view-all-link">← Ver Todos os Eventos</a>
+ </header>
+
+ <main class="storefront-main">
+
+ <section class="sf-card" id="sf-info-card">
+ <div class="sf-info-row">
+ <span class="sf-info-icon"></span>
+ <span id="sf-event-location"> - </span>
+ </div>
+ <div class="sf-info-row">
+ <span class="sf-info-icon"></span>
+ <span id="sf-event-date"> - </span>
+ </div>
+ <p class="sf-event-desc" id="sf-event-desc"></p>
+ </section>
+
+ <section class="sf-card" id="sf-loading-card">
+ <p class="sf-muted">A carregar informações do evento…</p>
+ </section>
+
+ <section class="sf-card sf-hidden" id="sf-notfound-card">
+ <p class="sf-error-text">Este evento não foi encontrado ou não está mais disponível para venda online.</p>
+ </section>
+
+ <section class="sf-card sf-hidden" id="sf-soldout-card">
+ <p class="sf-error-text"> Este evento está com todos os bilhetes ESGOTADOS.</p>
+ <p class="sf-muted" id="sf-soldout-contact"></p>
+ </section>
+
+ <!-- Formulário de seleção de bilhetes -->
+ <section class="sf-card sf-hidden" id="sf-tickets-card">
+ <h2 class="sf-section-title">Escolha os seus bilhetes</h2>
+
+ <div class="sf-sector sf-hidden" id="sf-sector-vip">
+ <div class="sf-sector-info">
+ <div class="sf-sector-name"> VIP</div>
+ <div class="sf-sector-price" id="sf-price-vip"> - </div>
+ <div class="sf-sector-remaining" id="sf-remaining-vip"></div>
+ </div>
+ <div class="sf-qty-control">
+ <button type="button" class="sf-qty-btn" data-action="dec" data-sector="vip">−</button>
+ <input type="number" id="sf-qty-vip" class="sf-qty-input" value="0" min="0" readonly />
+ <button type="button" class="sf-qty-btn" data-action="inc" data-sector="vip">+</button>
+ </div>
+ </div>
+
+ <div class="sf-sector sf-hidden" id="sf-sector-normal">
+ <div class="sf-sector-info">
+ <div class="sf-sector-name"> Normal</div>
+ <div class="sf-sector-price" id="sf-price-normal"> - </div>
+ <div class="sf-sector-remaining" id="sf-remaining-normal"></div>
+ </div>
+ <div class="sf-qty-control">
+ <button type="button" class="sf-qty-btn" data-action="dec" data-sector="normal">−</button>
+ <input type="number" id="sf-qty-normal" class="sf-qty-input" value="0" min="0" readonly />
+ <button type="button" class="sf-qty-btn" data-action="inc" data-sector="normal">+</button>
+ </div>
+ </div>
+
+ <div class="sf-summary" id="sf-summary">
+ <div class="sf-summary-row"><span>Subtotal</span><span id="sf-summary-subtotal">0,00 MT</span></div>
+ <div class="sf-summary-row sf-summary-fee"><span>Taxa de serviço GateFlow (5%)</span><span id="sf-summary-fee">0,00 MT</span></div>
+ <div class="sf-summary-row sf-summary-total"><span>Total a pagar</span><span id="sf-summary-total">0,00 MT</span></div>
+ </div>
+
+ <button type="button" class="sf-btn sf-btn-primary" id="sf-btn-continue" disabled>
+ → Continuar para pagamento
+ </button>
+ </section>
+
+ <!-- Formulário do comprador + telefone M-Pesa -->
+ <section class="sf-card sf-hidden" id="sf-buyer-card">
+ <h2 class="sf-section-title">Os seus dados</h2>
+ <div class="sf-field">
+ <label for="sf-buyer-name">Nome completo</label>
+ <input type="text" id="sf-buyer-name" placeholder="Ex: Maria João" autocomplete="name" />
+ </div>
+ <div class="sf-field">
+ <label for="sf-buyer-phone">Número M-Pesa (para pagamento)</label>
+ <input type="tel" id="sf-buyer-phone" placeholder="84 123 4567 ou 85 123 4567" autocomplete="tel" inputmode="numeric" />
+ <span class="sf-field-hint">Só números Vodacom/M-Pesa (84 ou 85). Vai receber um pedido de PIN no telemóvel.</span>
+ </div>
+ <div class="sf-field">
+ <label for="sf-buyer-email">E-mail (opcional)</label>
+ <input type="email" id="sf-buyer-email" placeholder="para receber a confirmação" autocomplete="email" />
+ </div>
+ <p class="sf-error-text sf-hidden" id="sf-buyer-error"></p>
+ <button type="button" class="sf-btn sf-btn-primary" id="sf-btn-pay">
+ 💳 Pagar <span id="sf-btn-pay-amount"></span> via M-Pesa
+ </button>
+ <button type="button" class="sf-btn sf-btn-ghost" id="sf-btn-back-to-tickets">← Voltar</button>
+ </section>
+
+ <!-- Aguardando confirmação M-Pesa -->
+ <section class="sf-card sf-hidden" id="sf-waiting-card">
+ <div class="sf-spinner"></div>
+ <h2 class="sf-section-title sf-center">Verifique o seu telemóvel</h2>
+ <p class="sf-muted sf-center">
+ Enviámos um pedido M-Pesa para <strong id="sf-waiting-phone"></strong>.<br />
+ Introduza o seu PIN M-Pesa para concluir o pagamento de <strong id="sf-waiting-amount"></strong>.
+ </p>
+ <p class="sf-muted sf-center sf-small">Isto pode demorar até 1 minuto. Não feche esta página.</p>
+ <p class="sf-error-text sf-hidden" id="sf-waiting-warning"></p>
+ <button type="button" class="sf-btn sf-btn-secondary sf-hidden" id="sf-btn-retry">↻ Tentar novamente</button>
+ </section>
+
+ <!-- Sucesso -->
+ <section class="sf-card sf-hidden" id="sf-success-card">
+ <div class="sf-success-icon"></div>
+ <h2 class="sf-section-title sf-center">Pagamento confirmado!</h2>
+ <p class="sf-muted sf-center">
+ O seu pedido <strong id="sf-success-code"></strong> foi confirmado.<br />
+ Os seus bilhetes estão prontos para download.
+ </p>
+ <a class="sf-btn sf-btn-primary" id="sf-btn-download" href="#" target="_blank" rel="noopener">
+ ⬇ Baixar os meus bilhetes (PDF)
+ </a>
+ </section>
+
+ </main>
+
+ {% include "_footer.html" %}
+ </div>
+
+ {% set wa_support_message = "Olá! Tenho uma dúvida sobre o evento " + event.name + "." %}
+ {% include "_wa_support_fab.html" %}
+
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/storefront.js') }}"></script>
+</body>
+</html>

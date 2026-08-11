@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+ <script>
+ (function () {
+ try {
+ var theme = localStorage.getItem("gateflow-theme") || "light";
+ document.documentElement.setAttribute("data-theme", theme);
+ } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
+ })();
+ </script>
+ <title>GateFlow - {{ event.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <!-- Carregamento assíncrono (não bloqueia a renderização da página
+      enquanto busca a fonte no Google — evita o "flash" em branco/tela
+      errada ao navegar entre páginas). A página nasce já com a fonte de
+      sistema como fallback e troca suavemente assim que a Plus Jakarta
+      Sans terminar de carregar. -->
+ <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+ <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+ <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+ <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+ <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+ <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+ {% endif %}
+</head>
+<body data-event-id="{{ event.id }}" data-event-module="{{ event.event_module }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
+ <div class="topbar">
+ <div class="navbar-logo-row">
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" class="navbar-logo" alt="GateFlow" onerror="this.style.display='none'" />{% endif %}
+ <div>
+ <h1>{{ event.name }}</h1>
+ <div class="subtitle">Gerenciamento do Evento</div>
+ </div>
+ </div>
+ <div class="topbar-nav">
+ <button class="theme-toggle" id="theme-toggle-btn" title="Alternar tema"></button>
+ <a href="{{ url_for('page_organizador_dashboard') }}">← Meus Eventos</a>
+ <a href="{{ url_for('page_logout') }}">Sair</a>
+ </div>
+ </div>
+
+ <div class="container">
+ <nav class="breadcrumbs" aria-label="breadcrumb">
+ <a href="{{ url_for('page_index') }}">Início</a>
+ <span class="crumb-sep">&gt;</span>
+ <a href="{{ url_for('page_organizador_dashboard') }}">Meus Eventos</a>
+ <span class="crumb-sep">&gt;</span>
+ <span class="crumb-current">{{ event.name }}</span>
+ </nav>
+ <a href="{{ url_for('page_organizador_dashboard') }}" class="back-link">← Voltar aos Meus Eventos</a>
+ <div class="card">
+ <div class="event-meta" style="font-size:0.95rem;">
+ Convites/RSVP &nbsp;|&nbsp; {{ event.location or "Local não informado" }}
+ &nbsp;|&nbsp; <span id="event-date-display">{{ event.event_date }}</span>
+ &nbsp;|&nbsp; <span class="badge {{ event.status.css_class }}">{{ event.status.label }}</span>
+ </div>
+ <div class="stats-bar" id="detail-stats" style="margin-top:10px;"></div>
+
+ {% if event.status.code == 'encerrado' %}
+ <div class="event-ended-banner" style="margin-top:14px; margin-bottom:0;">
+ Este evento já foi encerrado - edição bloqueada. A tela abaixo é apenas para consulta.
+ </div>
+ {% endif %}
+ </div>
+
+ {% if event.event_module != 'A' %}
+ <div class="card" style="border-left:4px solid var(--color-error);">
+ <h3 style="margin-top:0;">⚠ Evento do antigo Módulo de Vendas</h3>
+ <p style="color:var(--color-text-muted); font-size:0.9rem;">
+ Este evento foi criado quando o GateFlow ainda vendia bilhetes online. Essa funcionalidade foi descontinuada —
+ este evento não tem mais loja, checkout nem pagamento associado. Para usar a gestão de convidados/RSVP abaixo,
+ crie um novo evento (o formulário atual já cria só eventos por convite).
+ </p>
+ </div>
+ {% endif %}
+
+ <!-- ==================== RESUMO RSVP EM TEMPO REAL ==================== -->
+ <div class="card">
+ <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+ <h3 style="margin:0;">Confirmações (RSVP)</h3>
+ <span style="font-size:0.75rem; color:var(--color-text-muted);" id="rsvp-live-indicator">🟢 Atualiza automaticamente</span>
+ </div>
+ <div class="stats-bar" id="rsvp-summary-bar" style="margin-top:12px;"></div>
+ </div>
+
+ <!-- ==================== CONFIGURAÇÕES DE RSVP ==================== -->
+ <div class="card">
+ <h3 style="margin-top:0;">Configurações de Convite</h3>
+ <form id="form-rsvp-settings">
+ <div class="grid-2">
+ <div>
+ <label for="rsvp-deadline-days">Prazo para responder (dias antes do evento)</label>
+ <input type="number" id="rsvp-deadline-days" min="0" placeholder="Ex: 7 (deixe vazio para sem prazo)" value="{{ event.rsvp_deadline_days if event.rsvp_deadline_days is not none else '' }}" />
+ </div>
+ <div>
+ <label for="rsvp-maps-url">Link do local (Google Maps / Waze)</label>
+ <input type="text" id="rsvp-maps-url" placeholder="https://maps.google.com/..." value="{{ event.location_maps_url or '' }}" />
+ </div>
+ </div>
+ <button type="submit" class="btn btn-secondary" style="margin-top:6px;">✓ Guardar</button>
+ </form>
+ </div>
+
+ <!-- ==================== DISPARO DE CONVITES E LEMBRETES ==================== -->
+ <div class="card">
+ <h3 style="margin-top:0;">Convites e Lembretes</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ O convite leva o link pessoal de confirmação (WhatsApp, com fallback por e-mail). O lembrete leva o QR Code de
+ acesso, horário e localização — envie-o só depois de confirmarem presença, idealmente perto da data.
+ </p>
+ <div style="display:flex; gap:10px; flex-wrap:wrap;">
+ <button type="button" class="btn btn-primary" id="btn-send-invites-bulk">✉ Enviar Convites Pendentes</button>
+ <button type="button" class="btn btn-secondary" id="btn-send-reminders-bulk">🔔 Enviar Lembretes aos Confirmados</button>
+ </div>
+ </div>
+
+ <!-- ==================== GESTÃO DE CONVIDADOS ==================== -->
+ <div class="grid-2">
+ <div class="card">
+ <h3 style="margin-top:0;">Importar Convidados (.xlsx)</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ Colunas obrigatórias: <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong>.
+ <strong>Mesa</strong> é opcional.
+ </p>
+ <button class="btn btn-secondary btn-block" id="btn-download-template" style="margin-bottom:10px;">
+ ⬇ Baixar Modelo de Planilha (.xlsx)
+ </button>
+ <div class="upload-drop">
+ <input type="file" id="input-xlsx" accept=".xlsx" />
+ </div>
+ <button class="btn btn-primary btn-block" style="margin-top:12px;" id="btn-import">
+ ⬆ Importar Lista de Convidados
+ </button>
+ </div>
+
+ <div class="card">
+ <h3 style="margin-top:0;">Cadastrar Convidado Manualmente</h3>
+ <form id="form-new-guest">
+ <label for="guest-name">Nome Completo *</label>
+ <input type="text" id="guest-name" required placeholder="Ex: João Pedro Machava" />
+ <label for="guest-email">Email</label>
+ <input type="email" id="guest-email" />
+ <label for="guest-phone">Telefone</label>
+ <input type="tel" id="guest-phone" placeholder="Ex: 84 123 4567" />
+ <label for="guest-role">Cargo/Tipo</label>
+ <input type="text" id="guest-role" placeholder="Ex: Convidado, VIP..." />
+ <label for="guest-table">Mesa</label>
+ <input type="text" id="guest-table" placeholder="Ex: Mesa 05" />
+ <label for="guest-companions">Acompanhantes permitidos</label>
+ <input type="number" id="guest-companions" min="0" value="0" />
+ <div class="form-row-inline">
+ <button type="submit" class="btn btn-primary" id="btn-save-guest">+ Adicionar Convidado</button>
+ </div>
+ </form>
+ </div>
+ </div>
+
+ <div class="card">
+ <h3 style="margin-top:0;">Cortesias / VIP</h3>
+ <p style="color:var(--color-text-muted); font-size:0.85rem;">
+ Cota do evento: {{ event.courtesy_quota if event.courtesy_quota is not none else "sem limite" }}.
+ Convidados de cortesia recebem o convite com QR Code assinado por e-mail automaticamente.
+ </p>
+ <form id="form-courtesy">
+ <div class="grid-2">
+ <div>
+ <label for="courtesy-name">Nome Completo *</label>
+ <input type="text" id="courtesy-name" required placeholder="Ex: Maria Chissano" />
+ </div>
+ <div>
+ <label for="courtesy-email">E-mail</label>
+ <input type="email" id="courtesy-email" placeholder="Para envio automatico do convite" />
+ </div>
+ </div>
+ <div class="grid-2">
+ <div>
+ <label for="courtesy-phone">Telefone</label>
+ <input type="tel" id="courtesy-phone" placeholder="Ex: 84 123 4567" />
+ </div>
+ <div>
+ <label for="courtesy-table">Mesa</label>
+ <input type="text" id="courtesy-table" placeholder="Opcional" />
+ </div>
+ </div>
+ <button type="submit" class="btn btn-primary">+ Emitir Convite de Cortesia</button>
+ </form>
+ </div>
+
+ <div class="card">
+ <h3 style="margin-top:0;">Convidados</h3>
+ <div style="margin-bottom:12px;">
+ <input type="text" id="detail-search" placeholder="Buscar convidado por nome..." />
+ </div>
+ <div id="detail-guests-table"></div>
+ </div>
+ </div>
+
+ {% include "_footer.html" %}
+ <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+ <script src="{{ url_for('static', filename='js/organizador_event_detail.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+/* ==========================================================================
+   legal.css
+   Páginas institucionais (Sobre, Termos de Uso, Política de Privacidade).
+   Mesma identidade visual do resto do GateFlow — só tipografia de leitura
+   longa, mais respirada que o SaaS em si.
+   ========================================================================== */
+
+.legal-page-wrap {
+  flex: 1;
+  padding: 28px 16px 8px;
+}
+
+.legal-topbar {
+  max-width: 760px;
+  margin: 0 auto 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legal-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.legal-brand img { height: 34px; width: auto; }
+
+.legal-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+}
+
+.legal-back-link:hover { filter: brightness(0.97); }
+
+.legal-content {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 36px;
+}
+
+.legal-content h1 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 6px;
+}
+
+.legal-content .legal-updated {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 0 0 26px;
+}
+
+.legal-content h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin: 30px 0 10px;
+}
+
+.legal-content h2:first-of-type { margin-top: 0; }
+
+.legal-content h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 20px 0 8px;
+}
+
+.legal-content p {
+  color: var(--color-text);
+  line-height: 1.7;
+  font-size: 0.94rem;
+  margin: 0 0 14px;
+}
+
+.legal-content ul, .legal-content ol {
+  color: var(--color-text);
+  line-height: 1.7;
+  font-size: 0.94rem;
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.legal-content li { margin-bottom: 6px; }
+
+.legal-content strong { color: var(--color-text); }
+
+.legal-content a { color: var(--color-primary); font-weight: 600; }
+
+.legal-content .legal-note {
+  background: var(--color-hover-bg);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin: 18px 0;
+}
+
+.legal-content .legal-placeholder {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--color-error);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.88em;
+}
+
+/* -------------------------------------------------------------------- */
+/* Grade de "Sobre o Sistema" — como funciona, em 3 passos               */
+/* -------------------------------------------------------------------- */
+.about-hero {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.about-hero p {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  max-width: 560px;
+  margin: 10px auto 0;
+  line-height: 1.6;
+}
+
+.about-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 26px 0;
+}
+
+.about-step {
+  background: var(--color-hover-bg);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.about-step .about-step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.about-step h3 { margin: 0 0 6px; font-size: 0.95rem; }
+.about-step p { margin: 0; font-size: 0.85rem; }
+
+@media (max-width: 640px) {
+  .legal-content { padding: 22px; }
+  .about-steps { grid-template-columns: 1fr; }
+}

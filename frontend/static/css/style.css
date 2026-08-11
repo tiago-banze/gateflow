@@ -1,0 +1,1262 @@
+/* ==========================================================================
+   style.css
+   Identidade visual: Clean, moderna, corporativa.
+   Primária: #004E92 | Fundo: #F5F5F5 | Sucesso: #E0F7E0 | Erro: #EF4444
+   Otimizado para toque em tablets: áreas de clique >= 48dp.
+   ========================================================================== */
+
+:root {
+  --color-primary: #0F5FA6;
+  --color-primary-dark: #0A4A80;
+  --color-bg: #F5F5F5;
+  --color-card: #FFFFFF;
+  --color-success-bg: #E0F7E0;
+  --color-success-text: #1B7A1B;
+  --color-error: #EF4444;
+  --color-error-bg: #FDEDED;
+  --color-text: #1F2937;
+  --color-text-muted: #6B7280;
+  --color-border: #E5E7EB;
+  --color-border-soft: #EEF1F4;
+  --color-input-bg: #FFFFFF;
+  --color-hover-bg: #FAFBFC;
+  --radius: 10px;
+  /* Reduzido de 48px -> 44px: ainda dentro do mínimo recomendado pela Apple
+     HIG (44x44pt) e pelo WCAG 2.5.5 (AA) para áreas de toque — não descer
+     abaixo disso, especialmente em telas usadas por porteiros com pressa. */
+  --tap-min: 44px;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* --------------------------------------------------------------------- */
+/* MODO ESCURO — paleta sóbria com contraste WCAG (texto claro #f8f9fa    */
+/* sobre fundos escuros #121212/#1E1E1E). Ativado via [data-theme="dark"] */
+/* no <html>, alternado pelo toggle e persistido em localStorage.         */
+/* --------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --color-primary: #4C9AE8;
+  --color-primary-dark: #2E6DA8;
+  --color-bg: #121212;
+  --color-card: #1E1E1E;
+  --color-success-bg: #14301C;
+  --color-success-text: #6FE08C;
+  --color-error: #F87171;
+  --color-error-bg: #3A1414;
+  --color-text: #f8f9fa;
+  --color-text-muted: #ADB5BD;
+  --color-border: #2E2E2E;
+  --color-border-soft: #262626;
+  --color-input-bg: #262626;
+  --color-hover-bg: #232323;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* --------------------------------------------------------------------- */
+/* CORREÇÕES DE CONTRASTE — MODO ESCURO (Auditoria WCAG)                  */
+/* Vários componentes usavam fundo claro fixo (#fff, #FAFBFC, #EEF1F4)    */
+/* combinado com texto herdado de --color-text (claro no modo escuro) —   */
+/* resultado: texto praticamente ilegível. Este bloco realinha esses      */
+/* componentes às variáveis de tema.                                      */
+/* --------------------------------------------------------------------- */
+[data-theme="dark"] .event-item {
+  background: var(--color-card);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .nav-tabs a {
+  background: var(--color-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .nav-tabs a.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .stat-pill {
+  background: var(--color-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .guest-card {
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .guest-card .guest-table {
+  background: rgba(76, 154, 232, 0.16);
+}
+
+[data-theme="dark"] .guest-card.checked-in .guest-table {
+  background: rgba(111, 224, 140, 0.18);
+}
+
+[data-theme="dark"] .modal-box,
+[data-theme="dark"] .checkin-confirmation-box {
+  background: var(--color-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .btn-secondary {
+  background: rgba(76, 154, 232, 0.16);
+  color: var(--color-primary);
+}
+
+[data-theme="dark"] .badge,
+[data-theme="dark"] .status-proximo {
+  background: rgba(76, 154, 232, 0.16);
+}
+
+[data-theme="dark"] .status-encerrado {
+  background: var(--color-hover-bg);
+  color: var(--color-text-muted);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  /* Redução geral (~9%: 16px -> 14.5px) em toda a tipografia baseada em
+     rem. Os campos de formulário (input/select/textarea) são realinhados
+     a 16px reais logo abaixo, para não disparar o zoom automático do
+     Safari no iPhone ao focar um campo. */
+  font-size: 14.5px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Rodapé sticky (Fase 5): body vira uma coluna flex com pelo menos a
+   altura da tela. O rodapé (.site-footer) fica sempre como o último
+   filho direto de <body> em cada template e nunca precisa de "flex" —
+   ele só é empurrado para o fim quando sobra espaço. Elementos com
+   position:fixed (scan-fab, theme-toggle, modais) não são afetados,
+   pois saem do fluxo normal do documento. */
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Reserva sempre o espaço da barra de scroll vertical (mesmo quando a
+   página ainda não tem altura suficiente para precisar dela). Sem isto,
+   páginas que ganham altura depois de os dados chegarem via API (ex: o
+   card do próximo evento) fazem a barra de scroll aparecer de repente,
+   o que empurra o .container (max-width + margin:auto) alguns pixels
+   para a esquerda — dando a falsa sensação de que a tela "encolheu" ao
+   navegar entre o Administrador e o Porteiro. */
+html { scrollbar-gutter: stable; overflow-y: scroll; }
+
+/* Transição suave em todos os elementos que trocam de cor com o tema,
+   sem animar propriedades de layout (evita "salto" visual). */
+body, .card, .topbar, .guest-card, input, textarea, select, .modal-box,
+.event-item, .stat-pill, .badge, table, .icon-btn {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Botão de alternância de tema (Toggle Theme)                             */
+/* ---------------------------------------------------------------------- */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.theme-toggle:hover { background: rgba(255, 255, 255, 0.22); }
+
+/* Versão do botão usada fora do topbar azul (ex: tela de login), com
+   fundo neutro para manter contraste sobre o card claro/escuro. */
+.theme-toggle.theme-toggle-neutral {
+  background: var(--color-hover-bg);
+  color: var(--color-text);
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+  box-shadow: var(--shadow-soft);
+}
+
+a { text-decoration: none; color: inherit; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+/* Evita o delay de ~300ms de toque em navegadores móveis para todos os
+   elementos interativos (requisito de ultra-responsividade). */
+button, a, input, select, .btn, .modal-overlay, .guest-card, .event-item {
+  touch-action: manipulation;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Topbar                                                                  */
+/* ---------------------------------------------------------------------- */
+.topbar {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-soft);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.topbar h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.topbar .subtitle {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.topbar-nav a {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.12);
+}
+
+.topbar-nav a:hover, .topbar-nav a.active {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Layout genérico                                                        */
+/* ---------------------------------------------------------------------- */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+h2 { margin-top: 0; color: var(--color-primary); }
+h3 { color: var(--color-primary); }
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+
+input[type="text"],
+input[type="datetime-local"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 16px; /* fixo (não em rem): abaixo disso o iOS faz zoom automático ao focar o campo */
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  min-height: var(--tap-min);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(0, 78, 146, 0.14);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  box-shadow: 0 0 0 4px rgba(76, 154, 232, 0.22);
+}
+
+textarea { min-height: 90px; resize: vertical; }
+
+/* ---------------------------------------------------------------------- */
+/* Botões                                                                  */
+/* ---------------------------------------------------------------------- */
+.btn {
+  min-height: var(--tap-min);
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.05s ease, filter 0.15s ease;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { filter: brightness(1.1); }
+
+.btn-secondary { background: #E9EEF5; color: var(--color-primary); }
+.btn-secondary:hover { filter: brightness(0.97); }
+
+.btn-danger { background: var(--color-error); color: #fff; }
+
+.btn-block { width: 100%; }
+.btn-lg { min-height: 48px; font-size: 0.96rem; }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------- */
+/* Lista / Tabela de eventos                                              */
+/* ---------------------------------------------------------------------- */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Usado por renderEventsListWithFade() (common.js): a troca de
+     conteúdo passa por opacity:0 -> 1 em vez de aparecer instantânea. */
+  transition: opacity 0.18s ease;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Skeleton loader — estado inicial de #events-list ANTES do fetch()      */
+/* responder. Tem a mesma forma/altura de um .event-item real, para o     */
+/* container nascer já com o layout definitivo (não uma caixa de texto    */
+/* de uma linha só) e não "saltar" quando a lista de verdade chega.       */
+/* ---------------------------------------------------------------------- */
+.skeleton-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: #FAFBFC;
+  border: 1px solid #EEF1F4;
+  min-height: 66px;
+}
+
+[data-theme="dark"] .skeleton-item { background: var(--color-card); border-color: var(--color-border); }
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--color-border-soft) 25%, var(--color-border) 37%, var(--color-border-soft) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.skeleton-line--title { width: 45%; max-width: 220px; margin-bottom: 10px; }
+.skeleton-line--meta { width: 30%; max-width: 150px; height: 9px; }
+.skeleton-line--btn { width: 110px; height: 36px; border-radius: 10px; flex-shrink: 0; }
+
+.event-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: #FAFBFC;
+  border: 1px solid #EEF1F4;
+}
+
+.event-item:hover { border-color: var(--color-primary); }
+
+.event-item .event-name { font-weight: 700; font-size: 1.05rem; }
+.event-item .event-meta { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 4px; }
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #E9EEF5;
+  color: var(--color-primary);
+}
+
+.status-proximo { background: #E9EEF5; color: var(--color-primary); }
+.status-andamento { background: var(--color-success-bg); color: var(--color-success-text); }
+.status-encerrado { background: #EFEFEF; color: #888; }
+
+.nav-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.nav-tabs a {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.nav-tabs a.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Painel do Porteiro - lista de convidados                                */
+/* ---------------------------------------------------------------------- */
+.search-bar {
+  position: sticky;
+  top: 76px;
+  background: var(--color-bg);
+  padding: 12px 0;
+  z-index: 40;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: var(--shadow-soft);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.stat-pill.success { color: var(--color-success-text); }
+.stat-pill.pending { color: var(--color-primary); }
+
+.guest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.guest-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+  border: 2px solid transparent;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.guest-card.checked-in {
+  background: var(--color-success-bg);
+  border-color: #BFE8BF;
+}
+
+.guest-card .guest-name { font-weight: 700; font-size: 1.05rem; }
+.guest-card .guest-role { font-size: 0.85rem; color: var(--color-text-muted); margin: 4px 0; }
+
+.guest-card .guest-table {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: #E9EEF5;
+  padding: 5px 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.guest-card.checked-in .guest-table {
+  background: #D5F0D5;
+}
+
+.guest-card .checkin-btn {
+  width: 100%;
+}
+
+.guest-card .checked-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-success-text);
+  font-weight: 700;
+  min-height: var(--tap-min);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Scanner de QR Code (modal)                                              */
+/* ---------------------------------------------------------------------- */
+.scan-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.6rem;
+  box-shadow: 0 6px 18px rgba(0,78,146,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-box .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+#qr-reader { width: 100%; border-radius: 12px; overflow: hidden; }
+
+.hidden { display: none !important; }
+
+/* ---------------------------------------------------------------------- */
+/* Banner de confirmação de check-in (Mesa em destaque)                    */
+/* ---------------------------------------------------------------------- */
+.checkin-confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 40, 80, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 20px;
+  animation: toast-in 0.15s ease;
+}
+
+.checkin-confirmation-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.checkin-confirmation-check {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-size: 1.9rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.checkin-confirmation-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.checkin-confirmation-label {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  margin-bottom: 20px;
+}
+
+.checkin-confirmation-table {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.checkin-confirmation-table span {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  opacity: 0.85;
+}
+
+.checkin-confirmation-table strong {
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Toasts / Alertas                                                        */
+/* ---------------------------------------------------------------------- */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 260px;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  box-shadow: var(--shadow-card);
+  color: #fff;
+  animation: toast-in 0.2s ease;
+}
+
+.toast.success { background: #1B7A1B; }
+.toast.error { background: var(--color-error); }
+.toast.info { background: var(--color-primary); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Landing (index)                                                         */
+/* ---------------------------------------------------------------------- */
+.landing {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.landing-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  max-width: 1080px;
+}
+
+@media (max-width: 900px) {
+  .landing-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 700px) {
+  .landing-grid { grid-template-columns: 1fr; }
+  .landing-grid-3 { grid-template-columns: 1fr; }
+}
+
+.landing-option {
+  background: var(--color-card);
+  border-radius: 14px;
+  padding: 36px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  border: 2px solid transparent;
+}
+
+.landing-option:hover { border-color: var(--color-primary); }
+
+.landing-option .icon { font-size: 2.1rem; margin-bottom: 10px; }
+.landing-option h2 { margin-bottom: 6px; }
+.landing-option p { color: var(--color-text-muted); font-size: 0.9rem; }
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.upload-drop {
+  border: 2px dashed #C9D6E3;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}
+
+.form-row-inline {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Card do Próximo Evento (Dashboard Dinâmico)                             */
+/* ---------------------------------------------------------------------- */
+.next-event-card {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 78, 146, 0.22);
+  /* Entrada suave: em vez de saltar de display:none direto para visível
+     (o "flash" reportado ao trocar entre Admin e Porteiro), o card
+     nasce com opacidade 0 e um leve deslocamento, e é revelado pela
+     classe .is-visible (ver common.js) assim que os dados chegam. */
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.next-event-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.next-event-card .next-event-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.next-event-card .next-event-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.next-event-card .next-event-meta {
+  font-size: 0.84rem;
+  opacity: 0.9;
+  margin-bottom: 14px;
+}
+
+/* Ação rápida no Card do Próximo Evento (Fase 5, item E): editar, excluir
+   ou ir direto ao check-in sem precisar procurar o evento na lista. */
+.next-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.next-event-actions .btn {
+  min-height: 44px;
+}
+
+.next-event-actions .btn-secondary,
+.next-event-actions .btn-danger {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.next-event-actions .btn-secondary:hover,
+.next-event-actions .btn-danger:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.next-event-actions .btn-primary {
+  background: #fff;
+  color: var(--color-primary);
+}
+
+.next-event-actions .btn-primary:hover {
+  filter: brightness(0.96);
+}
+
+.next-event-cta {
+  font-size: 0.98rem;
+  padding: 12px 20px;
+}
+
+.countdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-width: 420px;
+}
+
+.countdown-unit {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 10px 4px;
+  text-align: center;
+}
+
+.countdown-unit .countdown-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown-unit .countdown-label {
+  font-size: 0.68rem;
+  opacity: 0.85;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Efeito "O Dia Chegou": pulsação suave de opacidade/glow na borda,
+   sem comprometer a legibilidade do texto. */
+.next-event-card.today-pulse {
+  animation: card-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes card-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 28px rgba(0, 78, 146, 0.28), 0 0 0 0 rgba(224, 247, 224, 0.5);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(0, 78, 146, 0.35), 0 0 0 8px rgba(224, 247, 224, 0);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Ícones de ação (editar / excluir) minimalistas                          */
+/* ---------------------------------------------------------------------- */
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  border-radius: 10px;
+  background: #F1F3F5;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn.icon-btn-edit:hover { background: #E9EEF5; color: var(--color-primary); }
+.icon-btn.icon-btn-delete:hover { background: var(--color-error-bg); color: var(--color-error); }
+
+.action-icons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tabelas responsivas (rolagem horizontal suave em telas pequenas)        */
+/* ---------------------------------------------------------------------- */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+}
+
+.table-responsive table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px; /* garante que a rolagem apareça em telas pequenas em vez de espremer o conteúdo */
+}
+
+/* ---------------------------------------------------------------------- */
+/* Aviso de evento encerrado (somente consulta)                            */
+/* ---------------------------------------------------------------------- */
+.event-ended-banner {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Ultra-responsividade: smartphones compactos (ex: ZTE Blade A36 ~360px)  */
+/* ---------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .container { padding: 14px; }
+  .card { padding: 16px; border-radius: 12px; }
+
+  .topbar { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+  .topbar h1 { font-size: 0.98rem; }
+  .topbar-nav { gap: 6px; }
+  .topbar-nav a { padding: 8px 10px; font-size: 0.76rem; }
+
+  .guest-grid { grid-template-columns: 1fr; }
+
+  .stats-bar { gap: 8px; }
+  .stat-pill { padding: 8px 12px; font-size: 0.76rem; }
+
+  .countdown-grid { gap: 6px; }
+  .countdown-unit .countdown-value { font-size: 1.1rem; }
+  .countdown-unit .countdown-label { font-size: 0.6rem; }
+  .next-event-card { padding: 18px; border-radius: 16px; }
+  .next-event-card .next-event-name { font-size: 1.1rem; }
+
+  .modal-box { padding: 16px; border-radius: 14px; }
+  .modal-box .form-row-inline { flex-direction: column; }
+  .modal-box .form-row-inline .btn { width: 100%; }
+
+  .scan-fab {
+    width: 60px;
+    height: 60px;
+    bottom: 18px;
+    right: 18px;
+    font-size: 1.3rem;
+  }
+
+  .checkin-confirmation-box { padding: 28px 20px; }
+  .checkin-confirmation-table strong { font-size: 2rem; }
+
+  .landing-option { padding: 26px 18px; }
+
+  .event-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .event-item > div:last-child {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Login redesenhado — minimalista, centralizado, alto contraste           */
+/* ---------------------------------------------------------------------- */
+.login-card {
+  background: var(--color-card);
+  border-radius: 22px;
+  box-shadow: var(--shadow-card);
+  padding: 40px 36px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.login-brand-icon { font-size: 1.3rem; }
+
+.login-brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--color-primary);
+}
+
+.login-intent {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.login-intent-icon { font-size: 1.8rem; margin-bottom: 6px; }
+
+.login-intent-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--color-text);
+}
+
+.login-intent-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.login-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.login-form label:first-of-type { margin-top: 0; }
+
+.login-submit { margin-top: 22px; }
+
+.login-back {
+  text-align: center;
+  margin-top: 22px;
+}
+
+.login-back a {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.login-back a:hover { color: var(--color-primary); }
+
+@media (max-width: 480px) {
+  .login-card { padding: 28px 22px; border-radius: 18px; }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Layout híbrido responsivo (Painel do Porteiro): tabela em telas         */
+/* grandes, cards em telas pequenas. Breakpoint em 768px.                  */
+/* ---------------------------------------------------------------------- */
+.desktop-only { display: none; }
+.mobile-only { display: grid; }
+
+@media (min-width: 768px) {
+  .desktop-only { display: block; }
+  .mobile-only { display: none; }
+}
+
+#guests-table-view table {
+  min-width: 0; /* nesta tabela específica não forçamos rolagem — ela já é enxuta */
+}
+
+#guests-table-view thead th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-border-soft);
+  background: var(--color-hover-bg);
+}
+
+#guests-table-view tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-soft);
+  font-size: 0.92rem;
+}
+
+#guests-table-view tbody tr.checked-in {
+  background: var(--color-success-bg);
+}
+
+#guests-table-view tbody tr:hover:not(.checked-in) {
+  background: var(--color-hover-bg);
+}
+
+#guests-table-view .table-guest-name { font-weight: 700; }
+
+#guests-table-view .table-guest-table {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+#guests-table-view .table-checkin-btn {
+  min-width: 120px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Painel do Organizador: eventos próprios vs. de terceiros (Fase 2)       */
+/* ---------------------------------------------------------------------- */
+.event-item-own {
+  border: 2px solid var(--color-primary);
+  background: var(--color-hover-bg);
+}
+
+.event-item-disabled {
+  opacity: 0.6;
+}
+
+.event-item-disabled:hover { border-color: var(--color-border-soft); }
+
+.badge-other-organizer {
+  background: var(--color-border-soft);
+  color: var(--color-text-muted);
+}
+
+#module-b-fields {
+  border-top: 1px dashed var(--color-border);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.status-esgotado { background: var(--color-error-bg); color: var(--color-error); }
+
+/* ===== Fase 5: Logo da marca ===== */
+.navbar-logo {
+  height: 42px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+  margin-right: 12px;
+}
+
+.navbar-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo-hero {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+  margin: 0 auto 14px;
+  display: block;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Breadcrumbs & navegação contextual (Fase 5, item D)                    */
+/* ---------------------------------------------------------------------- */
+.breadcrumbs {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.breadcrumbs a {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.breadcrumbs a:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumbs .crumb-current {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.breadcrumbs .crumb-sep {
+  opacity: 0.5;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* Indicador de modo offline no check-in (ver offline_checkin.js) */
+.offline-indicator {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #FFF4E0;
+  color: #8A5A00;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+[data-theme="dark"] .offline-indicator { background: #4A3A12; color: #FFD98E; }
