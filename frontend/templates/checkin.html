@@ -67,6 +67,14 @@
  </div>
  {% endif %}
 
+ <!-- Mini-cabeçalho fixo (só aparece no mobile via CSS): mantém o nome do
+      evento + contador rápido sempre visíveis, mesmo depois que a
+      .stats-bar grande abaixo rolar para fora da tela. -->
+ <div class="event-mini-sticky" id="event-mini-sticky">
+ <span class="event-mini-name">{{ event.name }}</span>
+ <span class="event-mini-count" id="event-mini-count">—/—</span>
+ </div>
+
  <div class="stats-bar" id="stats-bar"></div>
  <div class="offline-indicator hidden" id="offline-indicator"></div>
 

@@ -2150,6 +2150,58 @@ def api_delete_guest(event_id, guest_id):
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
+@app.route("/api/events/<event_id>/guests/<guest_id>/send-invite", methods=["POST"])
+@role_required_api("admin")
+def api_send_guest_invite_email(event_id, guest_id):
+    """
+    Envia (ou reenvia) manualmente o convite em PDF com QR Code por e-mail
+    para UM convidado do Módulo A. Usado pelo botão "Enviar Convite" /
+    "Reenviar" na tabela de convidados do Admin -- complementa o envio
+    automático que já acontece ao criar uma cortesia (útil para convidados
+    importados via planilha, ou para reenviar em caso de falha).
+    """
+    event = db.get_event(event_id)
+    if not event:
+        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+    guard = _require_module_a_event(event)
+    if guard:
+        return guard
+
+    guest = db.get_guest_by_event(event_id, guest_id)
+    if not guest:
+        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+
+    if not guest.get("email"):
+        return jsonify({"success": False, "error": "Este convidado não tem um e-mail cadastrado."}), 400
+
+    if not email_service.is_configured():
+        return jsonify({
+            "success": False,
+            "error": "O envio de e-mails ainda não foi configurado no servidor (variáveis SMTP ausentes).",
+        }), 503
+
+    try:
+        pdf_path = generate_invites_pdf(event, [guest])
+    except PDFGenerationError as exc:
+        db.mark_guest_invite_email_status(guest_id, "failed")
+        return jsonify({"success": False, "error": f"Falha ao gerar o PDF do convite: {exc}"}), 500
+
+    ok, error = email_service.send_courtesy_invite_email(
+        guest["email"], guest["full_name"], event["name"], pdf_path
+    )
+    db.mark_guest_invite_email_status(guest_id, "sent" if ok else "failed")
+    updated_guest = db.get_guest_by_event(event_id, guest_id)
+
+    if not ok:
+        return jsonify({
+            "success": False,
+            "error": error or "Falha ao enviar o e-mail.",
+            "data": updated_guest,
+        }), 502
+
+    return jsonify({"success": True, "data": updated_guest})
+
+
 @app.route("/api/events/<event_id>/guests", methods=["GET"])
 @role_required_api("admin", "porteiro")
 def api_list_guests(event_id):

@@ -55,6 +55,15 @@
  <span class="crumb-current">{{ event.name }}</span>
  </nav>
  <a href="{{ url_for('page_admin') }}" class="back-link">← Voltar aos Eventos</a>
+
+ <!-- Mini-cabeçalho fixo (só aparece no mobile via CSS): mantém o nome do
+      evento + contador rápido de check-in sempre visíveis mesmo quando o
+      card de estatísticas abaixo rolar para fora da tela. -->
+ <div class="event-mini-sticky" id="event-mini-sticky">
+ <span class="event-mini-name">{{ event.name }}</span>
+ <span class="event-mini-count" id="event-mini-count">—/—</span>
+ </div>
+
  <div class="card">
  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
  <div>
@@ -66,6 +75,11 @@
  </div>
  <div class="stats-bar" id="detail-stats" style="margin-top:10px;"></div>
  </div>
+ {% if event.event_module == "A" %}
+ <button class="btn btn-primary" id="btn-export-pdf-quick" title="Baixar Documento de Convites (PDF com QR Codes)">
+ ⬇ Baixar PDF de Convites
+ </button>
+ {% endif %}
  </div>
  {% if event.status.code == 'encerrado' %}
  <div class="event-ended-banner" style="margin-top:14px; margin-bottom:0;">
@@ -144,7 +158,7 @@
 
  <div class="card" id="module-a-guest-list">
  <h3 style="margin-top:0;">Convidados</h3>
- <div style="margin-bottom:12px;">
+ <div class="search-bar" style="margin-bottom:0;">
  <input type="text" id="detail-search" placeholder="Buscar convidado por nome..." />
  </div>
  <div id="detail-guests-table"></div>

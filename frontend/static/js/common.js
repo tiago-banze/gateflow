@@ -187,6 +187,36 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // --------------------------------------------------------------------------
+// ALTURA REAL DO TOPBAR (--topbar-height)
+// O .topbar é `position: sticky; top: 0`, mas sua altura muda entre
+// breakpoints (quebra em 2 linhas no mobile). Elementos que precisam
+// grudar logo ABAIXO dele (.search-bar, .event-mini-sticky) usavam um
+// valor fixo em px que só era correto numa tela — isto lê a altura real
+// do elemento renderizado e expõe como custom property, recalculada a
+// cada resize/orientação para acompanhar mudanças de layout.
+// --------------------------------------------------------------------------
+function setTopbarHeightVar() {
+ const topbar = document.querySelector(".topbar");
+ if (topbar) {
+ document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
+ }
+
+ // Se existir um mini-cabeçalho fixo do evento nesta página (mobile) e ele
+ // estiver visível (display != none, decidido via CSS/@media), soma a
+ // altura dele -- assim a .search-bar (que também é sticky) empilha
+ // corretamente LOGO ABAIXO dele, em vez de sobrepor os dois elementos
+ // no mesmo `top`.
+ const miniSticky = document.getElementById("event-mini-sticky");
+ const miniHeight = miniSticky && miniSticky.offsetParent !== null ? miniSticky.offsetHeight : 0;
+ document.documentElement.style.setProperty("--mini-sticky-height", `${miniHeight}px`);
+}
+
+document.addEventListener("DOMContentLoaded", setTopbarHeightVar);
+window.addEventListener("load", setTopbarHeightVar);
+window.addEventListener("resize", setTopbarHeightVar);
+window.addEventListener("orientationchange", setTopbarHeightVar);
+
+// --------------------------------------------------------------------------
 // CARD DO PRÓXIMO EVENTO + CONTADOR REGRESSIVO
 // (compartilhado entre o Painel Administrativo e o Painel do Porteiro - 
 // ambos têm o mesmo bloco de HTML com os ids next-event-card, cd-days, etc.)

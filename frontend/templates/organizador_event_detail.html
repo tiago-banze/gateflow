@@ -55,6 +55,12 @@
  <span class="crumb-current">{{ event.name }}</span>
  </nav>
  <a href="{{ url_for('page_organizador_dashboard') }}" class="back-link">← Voltar aos Meus Eventos</a>
+
+ <div class="event-mini-sticky" id="event-mini-sticky">
+ <span class="event-mini-name">{{ event.name }}</span>
+ <span class="event-mini-count" id="event-mini-count">—/—</span>
+ </div>
+
  <div class="card">
  <div class="event-meta" style="font-size:0.95rem;">
  Convites/RSVP &nbsp;|&nbsp; {{ event.location or "Local não informado" }}
@@ -195,7 +201,7 @@
 
  <div class="card">
  <h3 style="margin-top:0;">Convidados</h3>
- <div style="margin-bottom:12px;">
+ <div class="search-bar" style="margin-bottom:0;">
  <input type="text" id="detail-search" placeholder="Buscar convidado por nome..." />
  </div>
  <div id="detail-guests-table"></div>

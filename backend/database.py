@@ -332,6 +332,15 @@ def init_db():
         _migrate_add_column_if_missing(conn, "guests", "table_name", "TEXT")
         _migrate_add_column_if_missing(conn, "guests", "invite_sent_at", "TEXT")
         _migrate_add_column_if_missing(conn, "guests", "reminder_sent_at", "TEXT")
+
+        # --- Fase 9: status do convite por e-mail (Módulo A, envio manual) ---
+        # Coluna nova e independente de `invite_sent_at` (que já é usada pelo
+        # fluxo de RSVP do Módulo B): aqui guardamos o RESULTADO do último
+        # envio manual pelo Admin ('sent' | 'failed'), para exibir o selo
+        # Enviado/Pendente/Falhou na tabela de convidados. NULL = nunca
+        # tentado -- convidados antigos continuam válidos, só aparecem como
+        # "Pendente".
+        _migrate_add_column_if_missing(conn, "guests", "invite_email_status", "TEXT")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_guests_rsvp_token ON guests (rsvp_token)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_guests_rsvp_status ON guests (event_id, rsvp_status)")
 
@@ -1272,6 +1281,28 @@ def mark_guest_invite_sent(guest_id):
         conn.execute(
             "UPDATE guests SET invite_sent_at = ? WHERE id = ?", (datetime.utcnow().isoformat(), guest_id)
         )
+
+
+def mark_guest_invite_email_status(guest_id, status):
+    """
+    Atualiza o resultado do envio MANUAL do convite por e-mail (Módulo A),
+    disparado pelo botão "Enviar Convite" no painel do Admin.
+
+    `status`: 'sent' ou 'failed'. Em caso de sucesso também marcamos
+    `invite_sent_at` (reaproveitando a mesma coluna do fluxo de RSVP) para
+    manter só uma fonte de verdade de "quando o convite foi enviado".
+    """
+    with get_connection() as conn:
+        if status == "sent":
+            conn.execute(
+                "UPDATE guests SET invite_email_status = ?, invite_sent_at = ? WHERE id = ?",
+                (status, datetime.utcnow().isoformat(), guest_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE guests SET invite_email_status = ? WHERE id = ?",
+                (status, guest_id),
+            )
 
 
 def mark_guest_reminder_sent(guest_id):

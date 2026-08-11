@@ -18,6 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
  document.getElementById("btn-export-pdf").addEventListener("click", () =>
  downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf", "Baixar Documento de Convites", "Gerando PDF...")
  );
+ // Atalho no topo da página (Problema 3): o botão original fica dentro do
+ // card "Documentos e Relatórios", mais abaixo -- este duplica a mesma
+ // ação logo junto às estatísticas do evento, para quem não desce a
+ // página, sem duplicar lógica (mesmo endpoint, seu próprio spinner).
+ const quickPdfBtn = document.getElementById("btn-export-pdf-quick");
+ if (quickPdfBtn) {
+ quickPdfBtn.addEventListener("click", () =>
+ downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf-quick", "⬇ Baixar PDF de Convites", "Gerando PDF...")
+ );
+ }
  document.getElementById("btn-export-contingency").addEventListener("click", () =>
  downloadFile(`/api/events/${EVENT_ID}/guests/contingency-pdf`, "btn-export-contingency", "Baixar Lista de Contingência (PDF)", "Gerando PDF...")
  );
@@ -41,6 +51,11 @@ function renderStats(stats) {
  <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
  <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
  `;
+
+ const miniCountEl = document.getElementById("event-mini-count");
+ if (miniCountEl) {
+ miniCountEl.textContent = `${stats.checked_in}/${stats.total}`;
+ }
 }
 
 async function loadGuests(search) {
@@ -69,11 +84,12 @@ async function loadGuests(search) {
  <thead>
  <tr style="text-align:left; border-bottom:2px solid #EEF1F4;">
  <th style="padding:10px;">Nome</th>
- <th style="padding:10px;">Cargo/Tipo</th>
+ <th class="hide-on-mobile" style="padding:10px;">Cargo/Tipo</th>
  <th style="padding:10px;">Mesa</th>
  <th style="padding:10px;">Email</th>
- <th style="padding:10px;">Telefone</th>
+ <th class="hide-on-mobile" style="padding:10px;">Telefone</th>
  <th style="padding:10px;">Status</th>
+ <th style="padding:10px;">Convite</th>
  <th style="padding:10px;"></th>
  </tr>
  </thead>
@@ -81,14 +97,17 @@ async function loadGuests(search) {
  ${guests.map((g) => `
  <tr style="border-bottom:1px solid #F1F3F5; ${g.checked_in ? "background:#F5FCF5;" : ""}">
  <td style="padding:10px; font-weight:600;">${escapeHtml(g.full_name)}</td>
- <td style="padding:10px;">${escapeHtml(g.role || "-")}</td>
+ <td class="hide-on-mobile" style="padding:10px;">${escapeHtml(g.role || "-")}</td>
  <td style="padding:10px; font-weight:700; color:var(--color-primary);">${escapeHtml(g.table_number || "Não definida")}</td>
  <td style="padding:10px;">${escapeHtml(g.email || "-")}</td>
- <td style="padding:10px;">${escapeHtml(g.phone || "-")}</td>
+ <td class="hide-on-mobile" style="padding:10px;">${escapeHtml(g.phone || "-")}</td>
  <td style="padding:10px;">
  ${g.checked_in
  ? `<span class="badge" style="background:#E0F7E0; color:#1B7A1B;"> Presente</span>`
  : `<span class="badge">Pendente</span>`}
+ </td>
+ <td style="padding:10px;">
+ ${renderInviteCell(g)}
  </td>
  <td style="padding:10px;">
  <div class="action-icons">
@@ -109,6 +128,55 @@ async function loadGuests(search) {
  tableEl.querySelectorAll("[data-delete-guest]").forEach((btn) => {
  btn.addEventListener("click", () => handleDeleteGuest(btn.getAttribute("data-delete-guest")));
  });
+ tableEl.querySelectorAll("[data-send-invite]").forEach((btn) => {
+ btn.addEventListener("click", () => handleSendInvite(btn.getAttribute("data-send-invite")));
+ });
+}
+
+// --------------------------------------------------------------------------
+// CONVITE POR E-MAIL (envio manual / reenvio) — Módulo A
+// --------------------------------------------------------------------------
+
+function renderInviteCell(g) {
+ if (!g.email) {
+ return `<span class="badge" style="background:var(--color-hover-bg); color:var(--color-text-muted);" title="Sem e-mail cadastrado">—</span>`;
+ }
+
+ let badge;
+ if (g.invite_email_status === "sent") {
+ badge = `<span class="badge" style="background:#E0F7E0; color:#1B7A1B;">Enviado</span>`;
+ } else if (g.invite_email_status === "failed") {
+ badge = `<span class="badge" style="background:var(--color-error-bg); color:var(--color-error);">Falhou</span>`;
+ } else {
+ badge = `<span class="badge">Pendente</span>`;
+ }
+
+ const label = g.invite_email_status === "sent" ? "Reenviar" : "Enviar Convite";
+ return `
+ <div style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+ ${badge}
+ <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.72rem; min-height:auto;" data-send-invite="${g.id}">${label}</button>
+ </div>
+ `;
+}
+
+async function handleSendInvite(guestId) {
+ const btn = document.querySelector(`[data-send-invite="${guestId}"]`);
+ if (btn) {
+ btn.disabled = true;
+ btn.innerHTML = '<span class="spinner"></span>';
+ }
+
+ const result = await apiRequest(`/api/events/${EVENT_ID}/guests/${guestId}/send-invite`, { method: "POST" });
+
+ if (!result.success) {
+ showToast(result.error || "Erro ao enviar o convite por e-mail.", "error");
+ } else {
+ showToast("Convite enviado por e-mail com sucesso!", "success");
+ }
+ // Atualiza a badge/linha independentemente de sucesso ou falha, já que
+ // o backend sempre grava o resultado ('sent' ou 'failed') no convidado.
+ loadGuests(document.getElementById("detail-search").value);
 }
 
 async function handleImportGuests() {

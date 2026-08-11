@@ -202,6 +202,13 @@ function renderStats(stats) {
  <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
  <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
  `;
+
+ // Mini-cabeçalho fixo (mobile): mesmo contador, versão compacta, sempre
+ // visível mesmo depois que a .stats-bar acima rolar para fora da tela.
+ const miniCountEl = document.getElementById("event-mini-count");
+ if (miniCountEl) {
+ miniCountEl.textContent = `${stats.checked_in}/${stats.total}`;
+ }
 }
 
 function renderGuests(guests) {
@@ -612,8 +619,8 @@ async function loadLiveStats() {
   barEl.innerHTML = `
     <span class="stat-pill">${stats.event_module === "A" ? "Convidados" : "Vendidos"}: ${stats.total}</span>
     <span class="stat-pill success">Entradas: ${stats.checked_in}</span>
-    <span class="stat-pill">Pendentes: ${stats.pending}</span>
-    <span class="stat-pill">Taxa de Comparencia: ${stats.attendance_rate}%</span>
+    <span class="stat-pill hide-on-mobile">Pendentes: ${stats.pending}</span>
+    <span class="stat-pill hide-on-mobile">Taxa de Comparencia: ${stats.attendance_rate}%</span>
   `;
 
   if (!stats.hourly || stats.hourly.length === 0) {

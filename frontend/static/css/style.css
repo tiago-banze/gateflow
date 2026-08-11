@@ -459,10 +459,76 @@ textarea { min-height: 90px; resize: vertical; }
 /* ---------------------------------------------------------------------- */
 .search-bar {
   position: sticky;
-  top: 76px;
+  /* --topbar-height é calculado em JS (common.js, setTopbarHeightVar) a
+     partir da altura REAL do .topbar renderizado -- o valor fixo antigo
+     (76px) só era correto no desktop; no mobile o topbar quebra em 2
+     linhas (ver @media 480px) e ficava mais alto, então a barra de
+     pesquisa "flutuava" no meio da tela em vez de grudar no topo, e a
+     lista de convidados passava por trás dela. 76px continua como
+     fallback para navegadores sem suporte a custom properties. */
+  top: calc(var(--topbar-height, 76px) + var(--mini-sticky-height, 0px));
   background: var(--color-bg);
   padding: 12px 0;
   z-index: 40;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Utilitário: oculta elementos secundários em telas pequenas              */
+/* Boas práticas de UI/UX móvel — nem todo o volume de métricas do        */
+/* desktop precisa (ou deve) ser exibido no telemóvel.                     */
+/* ---------------------------------------------------------------------- */
+.hide-on-mobile {
+  display: revert;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Mini-cabeçalho fixo do evento (mobile) — mantém o nome do evento e o    */
+/* contador rápido de check-in sempre visíveis mesmo quando a barra azul   */
+/* grande de estatísticas (.stats-bar) rola para fora da tela. Oculto no   */
+/* desktop, onde a barra de estatísticas já fica bem visível no topo do    */
+/* conteúdo.                                                                */
+/* ---------------------------------------------------------------------- */
+.event-mini-sticky {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .event-mini-sticky {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: sticky;
+    top: var(--topbar-height, 64px);
+    z-index: 45;
+    background: var(--color-primary);
+    color: #fff;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-soft);
+    border-radius: 10px;
+    margin-bottom: 10px;
+  }
+
+  .event-mini-sticky .event-mini-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .event-mini-sticky .event-mini-count {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.18);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
 }
 
 .stats-bar {

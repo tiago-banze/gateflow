@@ -58,6 +58,11 @@ function renderStats(stats) {
     <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
     <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
   `;
+
+  const miniCountEl = document.getElementById("event-mini-count");
+  if (miniCountEl) {
+    miniCountEl.textContent = `${stats.checked_in}/${stats.total}`;
+  }
 }
 
 async function loadRsvpSummary() {
@@ -161,7 +166,7 @@ async function loadGuests(search) {
             <th style="padding:10px;">Nome</th>
             <th style="padding:10px;">Mesa</th>
             <th style="padding:10px;">RSVP</th>
-            <th style="padding:10px;">Acomp.</th>
+            <th class="hide-on-mobile" style="padding:10px;">Acomp.</th>
             <th style="padding:10px;">Check-in</th>
             <th style="padding:10px;">Ações</th>
           </tr>
@@ -172,7 +177,7 @@ async function loadGuests(search) {
               <td style="padding:10px; font-weight:600;">${escapeHtml(g.full_name)}</td>
               <td style="padding:10px; font-weight:700; color:var(--color-primary);">${escapeHtml(g.table_name || g.table_number || "-")}</td>
               <td style="padding:10px;">${RSVP_STATUS_BADGE[g.rsvp_status] || RSVP_STATUS_BADGE.pending}</td>
-              <td style="padding:10px;">${g.rsvp_status === "confirmed" ? (g.companions_confirmed ?? 0) : "-"}${g.companions_allowed ? ` / ${g.companions_allowed}` : ""}</td>
+              <td class="hide-on-mobile" style="padding:10px;">${g.rsvp_status === "confirmed" ? (g.companions_confirmed ?? 0) : "-"}${g.companions_allowed ? ` / ${g.companions_allowed}` : ""}</td>
               <td style="padding:10px;">${g.checked_in ? "✓ Presente" : "-"}</td>
               <td style="padding:10px; white-space:nowrap;">
                 <button class="btn btn-secondary" style="padding:6px 10px; font-size:0.78rem;" data-send-invite="${g.id}" title="Enviar convite">✉</button>
