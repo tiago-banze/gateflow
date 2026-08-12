@@ -10,6 +10,18 @@ const EVENT_MODULE = document.body.getAttribute("data-event-module");
 let guestsSearchTimeout = null;
 let guestsCache = [];
 
+// Corre sempre, independente do Módulo (A ou B): o servidor manda a data
+// crua em ISO (ex: "2026-08-25T18:12:00") -- aqui trocamos pelo formato
+// amigável (formatDateTime, já usado no resto do sistema) para não
+// "estourar" o cabeçalho do card em telas pequenas nem exibir um formato
+// técnico ao utilizador.
+document.addEventListener("DOMContentLoaded", () => {
+ const dateEl = document.getElementById("event-date-display");
+ if (dateEl && dateEl.textContent.trim()) {
+ dateEl.textContent = formatDateTime(dateEl.textContent.trim());
+ }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
  if (EVENT_MODULE !== "A") return; // Modelo B: elementos de convidados nem existem no HTML (ver Jinja no template)
 

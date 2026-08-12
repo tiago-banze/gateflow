@@ -133,6 +133,12 @@ html, body {
   font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.25s ease, color 0.25s ease;
+  /* Rede de segurança: nomes de evento, e-mails ou URLs longas e sem
+     espaços (ex: link do Google Maps colado no campo de localização) já
+     não conseguem "furar" a largura de um card ou célula de tabela --
+     quebram a palavra em vez de empurrar o layout para o lado. */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Rodapé sticky (Fase 5): body vira uma coluna flex com pelo menos a
@@ -151,7 +157,18 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
    o que empurra o .container (max-width + margin:auto) alguns pixels
    para a esquerda — dando a falsa sensação de que a tela "encolheu" ao
    navegar entre o Administrador e o Porteiro. */
-html { scrollbar-gutter: stable; overflow-y: scroll; }
+html {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+  /* Rede de segurança global contra overflow horizontal: qualquer card,
+     tabela ou texto que "fure" a largura da tela (margem negativa mal
+     calculada, URL longa sem quebra, etc.) fica cortado em vez de criar
+     uma barra de rolagem lateral. Fica no <html> (não no <body>) para não
+     criar um SEGUNDO contexto de rolagem separado do viewport -- isso
+     quebraria o `position: sticky` do .topbar/.lp-navbar, que dependem de
+     rolar junto com o próprio documento. */
+  overflow-x: hidden;
+}
 
 /* Transição suave em todos os elementos que trocam de cor com o tema,
    sem animar propriedades de layout (evita "salto" visual). */
@@ -258,6 +275,7 @@ button, a, input, select, .btn, .modal-overlay, .guest-card, .event-item {
 /* Layout genérico                                                        */
 /* ---------------------------------------------------------------------- */
 .container {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
@@ -269,6 +287,7 @@ button, a, input, select, .btn, .modal-overlay, .guest-card, .event-item {
   box-shadow: var(--shadow-card);
   padding: 24px;
   margin-bottom: 20px;
+  max-width: 100%;
 }
 
 .grid-2 {
@@ -605,6 +624,15 @@ textarea { min-height: 90px; resize: vertical; }
 /* ---------------------------------------------------------------------- */
 /* Scanner de QR Code (modal)                                              */
 /* ---------------------------------------------------------------------- */
+
+/* Reserva espaço no fim da página de check-in para o botão flutuante da
+   câmara (.scan-fab, 68px + 28px de offset) não ficar em cima dos
+   últimos cartões/linhas de convidados ou do botão de Check-in de cada
+   cartão. */
+.container-has-fab {
+  padding-bottom: 112px;
+}
+
 .scan-fab {
   position: fixed;
   bottom: 28px;

@@ -14,6 +14,11 @@ let rsvpPollTimer = null;
 let lastSearchValue = "";
 
 document.addEventListener("DOMContentLoaded", () => {
+  const dateEl = document.getElementById("event-date-display");
+  if (dateEl && dateEl.textContent.trim()) {
+    dateEl.textContent = formatDateTime(dateEl.textContent.trim());
+  }
+
   loadGuests("");
   loadRsvpSummary();
   rsvpPollTimer = setInterval(() => {

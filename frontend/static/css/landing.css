@@ -119,7 +119,21 @@
 
   .lp-navbar-toggle { display: inline-flex; }
 
-  .lp-navbar-actions .btn-secondary { display: none; }
+  /* Requisito: no mobile, o botão de Entrar/Meu Painel NÃO pode
+     desaparecer -- antes esta regra escondia .btn-secondary por completo
+     (`display:none`), deixando o cabeçalho sem nenhum acesso directo ao
+     login. Agora só o compactamos (padding/fonte menores) para caber ao
+     lado do logótipo e do botão de menu sem sobrecarregar o topo. */
+  .lp-navbar-actions .btn-secondary {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* "Aceder ao Sistema" já repete o CTA principal do Hero, logo abaixo
+     do dobrar da página -- no mobile ele só disputa espaço com o
+     Entrar/logo, por isso sai do cabeçalho fixo (continua disponível no
+     Hero e mais abaixo em #acessos). */
+  .lp-navbar-actions .btn-primary { display: none; }
 }
 
 /* -------------------------------------------------------------------- */
