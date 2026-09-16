@@ -123,11 +123,17 @@
 html, body {
   margin: 0;
   padding: 0;
-  /* Redução geral (~9%: 16px -> 14.5px) em toda a tipografia baseada em
-     rem. Os campos de formulário (input/select/textarea) são realinhados
-     a 16px reais logo abaixo, para não disparar o zoom automático do
-     Safari no iPhone ao focar um campo. */
-  font-size: 14.5px;
+  /* Base tipográfica no padrão do navegador (16px / 100%) — é o tamanho
+     mínimo recomendado para leitura confortável em qualquer dispositivo
+     (WCAG, Material Design, Apple HIG) e o que os leitores de tela e o
+     zoom do usuário esperam como referência de 1rem. Uma redução global
+     aqui (ex: para "compensar" texto secundário grande demais) prejudica
+     TODO o site de uma vez só, incluindo texto que já estava correto.
+     Os campos de formulário (input/select/textarea) já têm font-size
+     fixo em 16px (não em rem) logo abaixo — isso, por si só, já evita o
+     zoom automático do Safari no iPhone ao focar um campo, sem precisar
+     encolher a tipografia do site inteiro para isso. */
+  font-size: 100%;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -981,7 +987,7 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .countdown-unit .countdown-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   opacity: 0.85;
   margin-top: 4px;
   text-transform: uppercase;
@@ -1081,7 +1087,6 @@ textarea { min-height: 90px; resize: vertical; }
 
   .countdown-grid { gap: 6px; }
   .countdown-unit .countdown-value { font-size: 1.1rem; }
-  .countdown-unit .countdown-label { font-size: 0.6rem; }
   .next-event-card { padding: 18px; border-radius: 16px; }
   .next-event-card .next-event-name { font-size: 1.1rem; }
 
