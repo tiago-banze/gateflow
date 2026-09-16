@@ -72,8 +72,26 @@ window.addEventListener("offline", updateOfflineIndicator);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((err) => {
-      console.warn("Não foi possível registar o Service Worker (modo offline ficará limitado):", err);
+    // Registos ANTIGOS (antes desta correção) ficaram sem escopo definido,
+    // o que o navegador trata como escopo "/" (o site inteiro) -- isso fazia
+    // o cache do Service Worker (pensado só para a tela de check-in
+    // funcionar offline) interceptar e servir CSS/JS desatualizados em
+    // páginas completamente diferentes (Admin, Organizador), mesmo depois
+    // de um deploy novo. Aqui: primeiro remove qualquer registo antigo com
+    // escopo largo, depois registra de novo já com escopo restrito a
+    // /checkin/ -- assim este Service Worker nunca mais afeta o resto do
+    // site, só a própria tela de check-in, que é o único lugar que
+    // realmente precisa funcionar offline.
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      const cleanupPromises = registrations
+        .filter((reg) => !reg.scope.endsWith("/checkin/"))
+        .map((reg) => reg.unregister());
+
+      Promise.all(cleanupPromises).then(() => {
+        navigator.serviceWorker.register("/sw.js", { scope: "/checkin/" }).catch((err) => {
+          console.warn("Não foi possível registar o Service Worker (modo offline ficará limitado):", err);
+        });
+      });
     });
   });
 }
