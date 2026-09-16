@@ -216,6 +216,24 @@ window.addEventListener("load", setTopbarHeightVar);
 window.addEventListener("resize", setTopbarHeightVar);
 window.addEventListener("orientationchange", setTopbarHeightVar);
 
+// ResizeObserver: remede automaticamente sempre que a altura REAL do
+// topbar (ou do mini-cabeçalho) mudar, por QUALQUER motivo -- a fonte
+// web carregando um instante depois (mudando a métrica do texto), a
+// logo da marca carregando depois (empurrando a altura para baixo),
+// o nome do evento vindo da API e quebrando linha, etc. Os listeners
+// acima cobrem só o carregamento inicial e o resize da janela; isto
+// cobre tudo o resto, de uma vez, sem precisar prever cada causa
+// possível de mudança de altura -- é a correção definitiva para a
+// barra de busca "flutuar" fora do lugar depois que o topo termina de
+// carregar de verdade.
+if (window.ResizeObserver) {
+  const topbarEl = document.querySelector(".topbar");
+  if (topbarEl) new ResizeObserver(setTopbarHeightVar).observe(topbarEl);
+
+  const miniStickyEl = document.getElementById("event-mini-sticky");
+  if (miniStickyEl) new ResizeObserver(setTopbarHeightVar).observe(miniStickyEl);
+}
+
 // --------------------------------------------------------------------------
 // CARD DO PRÓXIMO EVENTO + CONTADOR REGRESSIVO
 // (compartilhado entre o Painel Administrativo e o Painel do Porteiro - 
