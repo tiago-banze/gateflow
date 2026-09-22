@@ -34,24 +34,24 @@ function renderPendingFeedbacks(feedbacks) {
   }
 
   listEl.innerHTML = feedbacks.map((fb) => `
-    <div class="event-item" style="flex-direction:column; align-items:stretch; gap:10px; margin-bottom:12px;" data-feedback-id="${fb.id}">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
-        <div>
-          <div class="event-name">${escapeHtml(fb.name)}</div>
-          <div class="event-meta">
-            <span style="color:#F5A623;">${"★".repeat(fb.rating)}${"☆".repeat(5 - fb.rating)}</span>
-            &nbsp;|&nbsp; ${formatDateTime(fb.created_at)}
-          </div>
-        </div>
-        <span class="badge">Pendente</span>
-      </div>
-      <p style="margin:0; font-size:0.9rem; color:var(--color-text);">${escapeHtml(fb.comment)}</p>
-      <div style="display:flex; gap:10px;">
-        <button class="btn btn-primary" data-approve-feedback="${fb.id}">✓ Aprovar</button>
-        <button class="btn btn-danger" data-reject-feedback="${fb.id}">✕ Rejeitar</button>
-      </div>
-    </div>
-  `).join("");
+ <div class="event-item" style="flex-direction:column; align-items:stretch; gap:12px;" data-feedback-id="${fb.id}">
+ <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+ <div>
+ <div class="event-name">${escapeHtml(fb.name)}</div>
+ <div class="event-meta">
+ <span class="meta-item" style="color:var(--gold);" aria-label="${fb.rating} de 5 estrelas">${"★".repeat(fb.rating)}${"☆".repeat(5 - fb.rating)}</span>
+ <span class="meta-item">${icon("clock", 15)} ${escapeHtml(formatDateTime(fb.created_at))}</span>
+ </div>
+ </div>
+ <span class="badge badge-warning">${icon("hourglass", 13)} Pendente</span>
+ </div>
+ <p style="margin:0; font-size:0.9375rem;">${escapeHtml(fb.comment)}</p>
+ <div style="display:flex; gap:10px; flex-wrap:wrap;">
+ <button class="btn btn-primary" data-approve-feedback="${fb.id}">${icon("check")} Aprovar</button>
+ <button class="btn btn-danger-soft" data-reject-feedback="${fb.id}">${icon("x")} Rejeitar</button>
+ </div>
+ </div>
+ `).join("");
 
   listEl.querySelectorAll("[data-approve-feedback]").forEach((btn) => {
     btn.addEventListener("click", () => handleModerate(btn.getAttribute("data-approve-feedback"), "approve", btn));

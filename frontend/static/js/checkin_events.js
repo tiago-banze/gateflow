@@ -52,11 +52,11 @@ async function applyEvents(events, { fade = true } = {}) {
  <div>
  <div class="event-name">
  ${escapeHtml(event.name)}
- <span class="badge ${event.status.css_class}" style="margin-left:8px;">${escapeHtml(event.status.label)}</span>
+ <span class="badge ${event.status.css_class}">${escapeHtml(event.status.label)}</span>
  </div>
- <div class="event-meta"> ${formatDateTime(event.event_date)}</div>
+ <div class="event-meta">${eventMetaHtml(event.location, event.event_date)}</div>
  </div>
- <a href="/checkin/${event.id}" class="btn btn-primary">📷 Trabalhar neste Evento</a>
+ <a href="/checkin/${event.id}" class="btn btn-primary">${icon("scan")} Trabalhar neste evento</a>
  </div>
  `).join("");
  }

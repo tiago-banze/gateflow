@@ -1,62 +1,35 @@
+{% from "_ui.html" import icon, theme_toggle with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
- <meta charset="UTF-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
- <script>
- (function () {
- try {
- var theme = localStorage.getItem("gateflow-theme") || "light";
- document.documentElement.setAttribute("data-theme", theme);
- } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
- })();
- </script>
- <title>{{ event.name }} - Bilhetes | GateFlow</title>
- {% set og_title = event.name + " — Bilhetes | GateFlow" %}
- {% set og_description = "Compra o teu bilhete para " + event.name + (" em " + event.location if event.location else "") + ", com pagamento M-Pesa e QR Code seguro." %}
- {% include "_og_meta.html" %}
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
- <!-- Carregamento assíncrono (não bloqueia a renderização da página
-      enquanto busca a fonte no Google — evita o "flash" em branco/tela
-      errada ao navegar entre páginas). A página nasce já com a fonte de
-      sistema como fallback e troca suavemente assim que a Plus Jakarta
-      Sans terminar de carregar. -->
- <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
- <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
- <link rel="stylesheet" href="{{ url_for('static', filename='css/storefront.css') }}" />
- <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
-{% if gateflow_logo_available %}
- <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
- <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
- <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
- <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
- {% endif %}
+  {% include "_head.html" %}
+  <title>{{ event.name }} - Bilhetes | GateFlow</title>
+  {% include "_og_meta.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/storefront.css') }}" />
 </head>
 <body class="storefront-body">
- <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+ {{ theme_toggle(floating=True) }}
 
  <div class="storefront-wrap" id="storefront-root" data-event-slug="{{ event.slug }}">
 
  <header class="storefront-hero">
  <div class="storefront-hero-brand">
- {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" style="height:30px; vertical-align:middle;" />{% endif %}
+ {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" alt="GateFlow" style="height:36px; width:36px; border-radius:10px; vertical-align:middle;" />{% endif %}
  </div>
  <h1 class="storefront-hero-title" id="sf-event-name">{{ event.name }}</h1>
  <p class="storefront-hero-org" id="sf-event-org"></p>
- <a href="{{ url_for('storefront_catalog_page') }}" class="sf-view-all-link">← Ver Todos os Eventos</a>
+ <a href="{{ url_for('storefront_catalog_page') }}" class="sf-view-all-link">{{ icon('arrow-left', 16) }} Ver todos os eventos</a>
  </header>
 
  <main class="storefront-main">
 
  <section class="sf-card" id="sf-info-card">
  <div class="sf-info-row">
- <span class="sf-info-icon"></span>
+ <span class="sf-info-icon">{{ icon('map-pin', 18) }}</span>
  <span id="sf-event-location"> - </span>
  </div>
  <div class="sf-info-row">
- <span class="sf-info-icon"></span>
+ <span class="sf-info-icon">{{ icon('calendar', 18) }}</span>
  <span id="sf-event-date"> - </span>
  </div>
  <p class="sf-event-desc" id="sf-event-desc"></p>
@@ -112,7 +85,7 @@
  </div>
 
  <button type="button" class="sf-btn sf-btn-primary" id="sf-btn-continue" disabled>
- → Continuar para pagamento
+ Continuar para pagamento {{ icon('arrow-right') }}
  </button>
  </section>
 
@@ -134,9 +107,9 @@
  </div>
  <p class="sf-error-text sf-hidden" id="sf-buyer-error"></p>
  <button type="button" class="sf-btn sf-btn-primary" id="sf-btn-pay">
- 💳 Pagar <span id="sf-btn-pay-amount"></span> via M-Pesa
+ {{ icon('credit-card') }} Pagar <span id="sf-btn-pay-amount"></span> via M-Pesa
  </button>
- <button type="button" class="sf-btn sf-btn-ghost" id="sf-btn-back-to-tickets">← Voltar</button>
+ <button type="button" class="sf-btn sf-btn-ghost" id="sf-btn-back-to-tickets">{{ icon('arrow-left') }} Voltar</button>
  </section>
 
  <!-- Aguardando confirmação M-Pesa -->
@@ -149,19 +122,19 @@
  </p>
  <p class="sf-muted sf-center sf-small">Isto pode demorar até 1 minuto. Não feche esta página.</p>
  <p class="sf-error-text sf-hidden" id="sf-waiting-warning"></p>
- <button type="button" class="sf-btn sf-btn-secondary sf-hidden" id="sf-btn-retry">↻ Tentar novamente</button>
+ <button type="button" class="sf-btn sf-btn-secondary sf-hidden" id="sf-btn-retry">{{ icon('refresh') }} Tentar novamente</button>
  </section>
 
  <!-- Sucesso -->
  <section class="sf-card sf-hidden" id="sf-success-card">
- <div class="sf-success-icon"></div>
+ <div class="sf-success-icon">{{ icon('check-circle', 48) }}</div>
  <h2 class="sf-section-title sf-center">Pagamento confirmado!</h2>
  <p class="sf-muted sf-center">
  O seu pedido <strong id="sf-success-code"></strong> foi confirmado.<br />
  Os seus bilhetes estão prontos para download.
  </p>
  <a class="sf-btn sf-btn-primary" id="sf-btn-download" href="#" target="_blank" rel="noopener">
- ⬇ Baixar os meus bilhetes (PDF)
+ {{ icon('download') }} Baixar os meus bilhetes (PDF)
  </a>
  </section>
 

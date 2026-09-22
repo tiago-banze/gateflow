@@ -36,13 +36,13 @@ function updateOfflineIndicator() {
   const el = document.getElementById("offline-indicator");
   if (!el) return;
   if (!navigator.onLine) {
-    el.textContent = "📴 Sem internet — a validar com a lista guardada neste aparelho";
+    el.innerHTML = `${icon("wifi-off", 18)} <span>Sem internet — a validar com a lista guardada neste aparelho</span>`;
     el.classList.remove("hidden");
     return;
   }
   OfflineCheckin.countPending().then((count) => {
     if (count > 0) {
-      el.textContent = `🔄 A sincronizar ${count} check-in(s) pendente(s)...`;
+      el.innerHTML = `${icon("refresh", 18)} <span>A sincronizar ${Number(count)} check-in(s) pendente(s)…</span>`;
       el.classList.remove("hidden");
     } else {
       el.classList.add("hidden");
@@ -215,10 +215,15 @@ async function refreshGuests() {
 function renderStats(stats) {
  const el = document.getElementById("stats-bar");
  if (!stats) { el.innerHTML = ""; return; }
+ const pct = stats.total > 0 ? Math.round((stats.checked_in / stats.total) * 100) : 0;
  el.innerHTML = `
- <span class="stat-pill">Total: ${stats.total}</span>
- <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
- <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
+ <div class="stat-pill"><span class="stat-label">Total</span><span class="stat-value">${stats.total}</span></div>
+ <div class="stat-pill success"><span class="stat-label">Presentes</span><span class="stat-value">${stats.checked_in}</span></div>
+ <div class="stat-pill pending"><span class="stat-label">Pendentes</span><span class="stat-value">${stats.pending}</span></div>
+ <div class="stat-progress" aria-hidden="true">
+ <div class="stat-progress-track"><span class="stat-progress-fill" style="width:${pct}%"></span></div>
+ <span class="stat-progress-label">${pct}%</span>
+ </div>
  `;
 
  // Mini-cabeçalho fixo (mobile): mesmo contador, versão compacta, sempre
@@ -258,12 +263,12 @@ function renderGuestCards(guests, container) {
  <div class="guest-card ${g.checked_in ? "checked-in" : ""}" data-guest-id="${g.id}">
  <div class="guest-name">${escapeHtml(g.full_name)}</div>
  <div class="guest-role">${escapeHtml(g.role || "Convidado")}</div>
- <div class="guest-table"> Mesa: <strong>${escapeHtml(g.table_number || "Não definida")}</strong></div>
+ <div class="guest-table">${icon("grid", 15)} Mesa <strong>${escapeHtml(g.table_number || "Não definida")}</strong></div>
  ${g.checked_in
- ? `<div class="checked-label"> Presença confirmada</div>`
+ ? `<div class="checked-label">${icon("check-circle")} Presença confirmada</div>`
  : EVENT_HAS_ENDED
- ? `<div class="checked-label" style="color:var(--color-text-muted);"> Não compareceu</div>`
- : `<button class="btn btn-primary checkin-btn" data-checkin-guest="${g.id}">Check-in</button>`}
+ ? `<div class="checked-label is-absent">${icon("x-circle")} Não compareceu</div>`
+ : `<button class="btn btn-primary checkin-btn" data-checkin-guest="${g.id}">${icon("check")} Check-in</button>`}
  </div>
  `).join("");
 
@@ -282,10 +287,10 @@ function renderGuestTable(guests, tableBody) {
  <td class="table-guest-table">${escapeHtml(g.table_number || "Não definida")}</td>
  <td>
  ${g.checked_in
- ? `<span class="badge" style="background:var(--color-success-bg); color:var(--color-success-text);"> Presente</span>`
+ ? `<span class="badge badge-success">${icon("check", 13)} Presente</span>`
  : EVENT_HAS_ENDED
- ? `<span class="badge"> Não compareceu</span>`
- : `<button class="btn btn-primary table-checkin-btn" data-checkin-guest="${g.id}">Check-in</button>`}
+ ? `<span class="badge badge-muted">${icon("x", 13)} Não compareceu</span>`
+ : `<button class="btn btn-primary table-checkin-btn" data-checkin-guest="${g.id}">${icon("check")} Check-in</button>`}
  </td>
  </tr>
  `).join("");
@@ -392,7 +397,7 @@ function showCheckinConfirmation(guest) {
  overlay.className = "checkin-confirmation-overlay";
  overlay.innerHTML = `
  <div class="checkin-confirmation-box">
- <div class="checkin-confirmation-check"></div>
+ <div class="checkin-confirmation-check">${icon("check", 44)}</div>
  <div class="checkin-confirmation-name">${escapeHtml(guest.full_name)}</div>
  <div class="checkin-confirmation-label">Check-in confirmado</div>
  <div class="checkin-confirmation-table">
@@ -635,14 +640,14 @@ async function loadLiveStats() {
 
   const stats = result.data;
   barEl.innerHTML = `
-    <span class="stat-pill">${stats.event_module === "A" ? "Convidados" : "Vendidos"}: ${stats.total}</span>
-    <span class="stat-pill success">Entradas: ${stats.checked_in}</span>
-    <span class="stat-pill hide-on-mobile">Pendentes: ${stats.pending}</span>
-    <span class="stat-pill hide-on-mobile">Taxa de Comparencia: ${stats.attendance_rate}%</span>
+    <div class="stat-pill"><span class="stat-label">${stats.event_module === "A" ? "Convidados" : "Vendidos"}</span><span class="stat-value">${stats.total}</span></div>
+ <div class="stat-pill success"><span class="stat-label">Entradas</span><span class="stat-value">${stats.checked_in}</span></div>
+ <div class="stat-pill hide-on-mobile"><span class="stat-label">Pendentes</span><span class="stat-value">${stats.pending}</span></div>
+ <div class="stat-pill hide-on-mobile"><span class="stat-label">Taxa de comparência</span><span class="stat-value">${stats.attendance_rate}%</span></div>
   `;
 
   if (!stats.hourly || stats.hourly.length === 0) {
-    chartEl.innerHTML = `<p style="color:var(--color-text-muted); font-size:0.85rem;">Ainda sem entradas registadas.</p>`;
+    chartEl.innerHTML = `<p class="field-hint">Ainda sem entradas registadas.</p>`;
     return;
   }
 
@@ -658,13 +663,13 @@ async function loadLiveStats() {
     const y = chartHeight - barHeight;
     return `
       <text x="${x + barWidth / 2}" y="${chartHeight - barHeight - 6}" text-anchor="middle" font-size="11" fill="var(--color-text)">${h.count}</text>
-      <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="var(--color-primary)" />
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="6" fill="var(--color-primary)" />
       <text x="${x + barWidth / 2}" y="${chartHeight + 14}" text-anchor="middle" font-size="10" fill="var(--color-text-muted)">${h.hour}h</text>
     `;
   }).join("");
 
   chartEl.innerHTML = `
-    <p style="color:var(--color-text-muted); font-size:0.8rem; margin-bottom:6px;">Entradas por hora</p>
+    <p class="field-hint" style="margin:0 0 6px;">Entradas por hora</p>
     <svg viewBox="0 0 ${width} ${chartHeight + 20}" width="100%" height="${chartHeight + 20}" preserveAspectRatio="xMinYMid meet">
       ${bars}
     </svg>

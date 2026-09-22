@@ -1,48 +1,19 @@
+{% from "_ui.html" import icon, theme_toggle with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
- <meta charset="UTF-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
- <script>
- (function () {
- try {
- var theme = localStorage.getItem("gateflow-theme") || "light";
- document.documentElement.setAttribute("data-theme", theme);
- } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
- })();
- </script>
- <title>Política de Privacidade - GateFlow</title>
- {% set og_title = "Política de Privacidade - GateFlow" %}
- {% set og_description = "Como o GateFlow recolhe, usa e protege os teus dados." %}
- {% include "_og_meta.html" %}
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
- <!-- Carregamento assíncrono (não bloqueia a renderização da página
-      enquanto busca a fonte no Google — evita o "flash" em branco/tela
-      errada ao navegar entre páginas). A página nasce já com a fonte de
-      sistema como fallback e troca suavemente assim que a Plus Jakarta
-      Sans terminar de carregar. -->
- <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
- <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
- <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}" />
- <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
-{% if gateflow_logo_available %}
- <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
- <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
- <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
- <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
- {% endif %}
+  {% include "_head.html" %}
+  <title>Política de Privacidade - GateFlow</title>
+  {% include "_og_meta.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}" />
 </head>
 <body>
- <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+ {{ theme_toggle(floating=True) }}
 
  <div class="legal-page-wrap">
  <div class="legal-topbar">
- <div class="legal-brand">
- {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
- </div>
- <a href="{{ url_for('page_index') }}" class="legal-back-link">← Voltar ao Sistema</a>
+ <a href="{{ url_for('page_index') }}" class="legal-brand">{% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" alt="" width="40" height="40" onerror="this.style.display='none'" />{% endif %}GateFlow</a>
+ <a href="{{ url_for('page_index') }}" class="legal-back-link">{{ icon('arrow-left', 16) }} Voltar ao sistema</a>
  </div>
 
  <div class="legal-content">

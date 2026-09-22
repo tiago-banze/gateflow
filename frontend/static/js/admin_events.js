@@ -62,19 +62,18 @@ async function applyEvents(events, { fade = true } = {}) {
  <div>
  <div class="event-name">
  ${escapeHtml(event.name)}
- <span class="badge ${event.status.css_class}" style="margin-left:8px;">${escapeHtml(event.status.label)}</span>
+ <span class="badge ${event.status.css_class}">${escapeHtml(event.status.label)}</span>
  </div>
- <div class="event-meta">
- ${escapeHtml(event.location || "Local não informado")} &nbsp;|&nbsp;
- ${formatDateTime(event.event_date)}
+ <div class="event-meta">${eventMetaHtml(event.location, event.event_date)}</div>
  </div>
+ <div class="event-actions">
+ <span class="badge">${icon("users", 13)} ${event.total_guests || 0} convidados</span>
+ <span class="badge badge-success">${icon("check", 13)} ${event.total_checked_in || 0} presentes</span>
+ <a href="/admin/eventos/${event.id}" class="btn btn-primary">${icon("sliders")} Gerenciar</a>
+ <div class="action-icons">
+ <button class="icon-btn icon-btn-edit" data-edit-event="${event.id}" title="Editar evento" aria-label="Editar ${escapeHtml(event.name)}">${icon("edit")}</button>
+ <button class="icon-btn icon-btn-delete" data-delete-event="${event.id}" title="Excluir evento" aria-label="Excluir ${escapeHtml(event.name)}">${icon("trash")}</button>
  </div>
- <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
- <span class="badge">${event.total_guests || 0} convidados</span>
- <span class="badge" style="background:#E0F7E0; color:#1B7A1B;">${event.total_checked_in || 0} presentes</span>
- <a href="/admin/eventos/${event.id}" class="btn btn-primary">⚙ Gerenciar</a>
- <button class="btn btn-secondary" data-edit-event="${event.id}">✎ Editar</button>
- <button class="btn btn-danger" data-delete-event="${event.id}">🗑 Excluir</button>
  </div>
  </div>
  `).join("");

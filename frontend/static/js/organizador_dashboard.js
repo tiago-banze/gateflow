@@ -35,16 +35,13 @@ async function loadEvents() {
  <div>
  <div class="event-name">
  ${escapeHtml(event.name)}
- <span class="badge ${event.status.css_class}" style="margin-left:8px;">${escapeHtml(event.status.label)}</span>
+ <span class="badge ${event.status.css_class}">${escapeHtml(event.status.label)}</span>
  </div>
- <div class="event-meta">
- ${escapeHtml(event.location || "Local não informado")} &nbsp;|&nbsp;
- ${formatDateTime(event.event_date)}
+ <div class="event-meta">${eventMetaHtml(event.location, event.event_date)}</div>
  </div>
- </div>
- <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
- <span class="badge">${event.total_guests ?? 0} convidados</span>
- <a href="/organizador/eventos/${event.id}" class="btn btn-primary">⚙ Gerenciar</a>
+ <div class="event-actions">
+ <span class="badge">${icon("users", 13)} ${event.total_guests ?? 0} convidados</span>
+ <a href="/organizador/eventos/${event.id}" class="btn btn-primary">${icon("sliders")} Gerenciar</a>
  </div>
  </div>`;
  }
@@ -54,15 +51,12 @@ async function loadEvents() {
  <div>
  <div class="event-name">
  ${escapeHtml(event.name)}
- <span class="badge badge-other-organizer" style="margin-left:8px;">Outro Organizador</span>
+ <span class="badge badge-other-organizer">Outro organizador</span>
  </div>
- <div class="event-meta">
- ${escapeHtml(event.location || "Local não informado")} &nbsp;|&nbsp;
- ${formatDateTime(event.event_date)}
+ <div class="event-meta">${eventMetaHtml(event.location, event.event_date)}</div>
  </div>
- </div>
- <div>
- <button class="btn btn-secondary" disabled title="Você só pode gerenciar seus próprios eventos">🔒 Indisponível</button>
+ <div class="event-actions">
+ <button class="btn btn-secondary" disabled title="Você só pode gerenciar seus próprios eventos">${icon("lock")} Indisponível</button>
  </div>
  </div>`;
  }).join("");
@@ -141,8 +135,8 @@ async function loadPorteiros() {
  listEl.innerHTML = porteiros.map((p) => `
  <div class="event-item">
  <div>
- <div class="event-name">${escapeHtml(p.full_name || p.username)}</div>
- <div class="event-meta">Usuário: ${escapeHtml(p.username)} · Vinculado só aos seus eventos</div>
+ <div class="event-name">${icon("user")} ${escapeHtml(p.full_name || p.username)}</div>
+ <div class="event-meta"><span class="meta-item">Usuário: ${escapeHtml(p.username)}</span><span class="meta-item">Vinculado só aos seus eventos</span></div>
  </div>
  </div>
  `).join("");

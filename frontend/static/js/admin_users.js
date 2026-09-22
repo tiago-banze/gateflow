@@ -50,27 +50,27 @@ async function loadUsers() {
  }
 
  listEl.innerHTML = `
- <div style="overflow-x:auto;">
- <table style="width:100%; border-collapse:collapse;">
+ <div class="table-responsive">
+ <table>
  <thead>
- <tr style="text-align:left; border-bottom:2px solid #EEF1F4;">
- <th style="padding:10px;">Nome</th>
- <th style="padding:10px;">Usuário</th>
- <th style="padding:10px;">Tipo</th>
- <th style="padding:10px;">Criado em</th>
+ <tr>
+ <th>Nome</th>
+ <th>Usuário</th>
+ <th>Tipo</th>
+ <th>Criado em</th>
  </tr>
  </thead>
  <tbody>
  ${users.map((u) => `
- <tr style="border-bottom:1px solid #F1F3F5;">
- <td style="padding:10px; font-weight:600;">${escapeHtml(u.full_name || "-")}</td>
- <td style="padding:10px;">${escapeHtml(u.username)}</td>
- <td style="padding:10px;">
- <span class="badge" style="${u.role === 'admin' ? 'background:#E9EEF5; color:var(--color-primary);' : 'background:#F1F1F1; color:#555;'}">
- ${u.role === 'admin' ? 'Administrador' : 'Porteiro'}
+ <tr>
+ <td class="cell-strong">${escapeHtml(u.full_name || "-")}</td>
+ <td>${escapeHtml(u.username)}</td>
+ <td>
+ <span class="badge ${u.role === "admin" ? "badge-info" : "badge-muted"}">
+ ${icon(u.role === "admin" ? "shield-check" : "scan", 13)} ${u.role === "admin" ? "Administrador" : "Porteiro"}
  </span>
  </td>
- <td style="padding:10px; color:var(--color-text-muted); font-size:0.85rem;">${formatDateTime(u.created_at)}</td>
+ <td class="cell-muted">${formatDateTime(u.created_at)}</td>
  </tr>
  `).join("")}
  </tbody>

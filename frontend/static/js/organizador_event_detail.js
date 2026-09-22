@@ -59,9 +59,9 @@ function renderStats(stats) {
   const statsEl = document.getElementById("detail-stats");
   if (!stats) { statsEl.innerHTML = ""; return; }
   statsEl.innerHTML = `
-    <span class="stat-pill">Total: ${stats.total}</span>
-    <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
-    <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
+    <div class="stat-pill"><span class="stat-label">Total</span><span class="stat-value">${stats.total}</span></div>
+ <div class="stat-pill success"><span class="stat-label">Presentes</span><span class="stat-value">${stats.checked_in}</span></div>
+ <div class="stat-pill pending"><span class="stat-label">Pendentes</span><span class="stat-value">${stats.pending}</span></div>
   `;
 
   const miniCountEl = document.getElementById("event-mini-count");
@@ -76,10 +76,10 @@ async function loadRsvpSummary() {
   if (!result.success) return;
   const s = result.data;
   barEl.innerHTML = `
-    <span class="stat-pill success">✓ Confirmados: ${s.confirmed}</span>
-    <span class="stat-pill" style="background:var(--color-error-bg); color:var(--color-error);">✕ Recusados: ${s.declined}</span>
-    <span class="stat-pill pending">… Pendentes: ${s.pending}</span>
-    <span class="stat-pill">+ Acompanhantes: ${s.total_companions}</span>
+    <div class="stat-pill success"><span class="stat-label">Confirmados</span><span class="stat-value">${s.confirmed}</span></div>
+ <div class="stat-pill danger"><span class="stat-label">Recusados</span><span class="stat-value">${s.declined}</span></div>
+ <div class="stat-pill pending"><span class="stat-label">Pendentes</span><span class="stat-value">${s.pending}</span></div>
+ <div class="stat-pill"><span class="stat-label">Acompanhantes</span><span class="stat-value">${s.total_companions}</span></div>
   `;
 }
 
@@ -111,7 +111,7 @@ async function handleSendInvitesBulk() {
   const result = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/send-invites`, { method: "POST" });
 
   btn.disabled = false;
-  btn.textContent = "✉ Enviar Convites Pendentes";
+  btn.innerHTML = `${icon("mail")} Enviar convites pendentes`;
 
   if (!result.success) {
     showToast(result.error || "Erro ao enviar convites.", "error");
@@ -129,7 +129,7 @@ async function handleSendRemindersBulk() {
   const result = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/send-reminders`, { method: "POST" });
 
   btn.disabled = false;
-  btn.textContent = "🔔 Enviar Lembretes aos Confirmados";
+  btn.innerHTML = `${icon("bell")} Enviar lembretes aos confirmados`;
 
   if (!result.success) {
     showToast(result.error || "Erro ao enviar lembretes.", "error");
@@ -140,9 +140,9 @@ async function handleSendRemindersBulk() {
 }
 
 const RSVP_STATUS_BADGE = {
-  confirmed: `<span class="badge" style="background:var(--color-success-bg); color:var(--color-success-text);">✓ Confirmado</span>`,
-  declined: `<span class="badge" style="background:var(--color-error-bg); color:var(--color-error);">✕ Recusou</span>`,
-  pending: `<span class="badge">… Pendente</span>`,
+  confirmed: `<span class="badge badge-success">${icon("check", 13)} Confirmado</span>`,
+ declined: `<span class="badge badge-danger">${icon("x", 13)} Recusou</span>`,
+ pending: `<span class="badge badge-muted">${icon("clock", 13)} Pendente</span>`,
 };
 
 async function loadGuests(search) {
@@ -167,26 +167,28 @@ async function loadGuests(search) {
     <div class="table-responsive">
       <table>
         <thead>
-          <tr style="text-align:left; border-bottom:2px solid var(--color-border-soft);">
-            <th style="padding:10px;">Nome</th>
-            <th style="padding:10px;">Mesa</th>
-            <th style="padding:10px;">RSVP</th>
-            <th class="hide-on-mobile" style="padding:10px;">Acomp.</th>
-            <th style="padding:10px;">Check-in</th>
-            <th style="padding:10px;">Ações</th>
+          <tr>
+            <th>Nome</th>
+            <th>Mesa</th>
+            <th>RSVP</th>
+            <th class="hide-on-mobile">Acomp.</th>
+            <th>Check-in</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           ${guests.map((g) => `
-            <tr style="border-bottom:1px solid var(--color-border-soft); ${g.checked_in ? "background:var(--color-success-bg);" : ""}">
-              <td style="padding:10px; font-weight:600;">${escapeHtml(g.full_name)}</td>
-              <td style="padding:10px; font-weight:700; color:var(--color-primary);">${escapeHtml(g.table_name || g.table_number || "-")}</td>
-              <td style="padding:10px;">${RSVP_STATUS_BADGE[g.rsvp_status] || RSVP_STATUS_BADGE.pending}</td>
-              <td class="hide-on-mobile" style="padding:10px;">${g.rsvp_status === "confirmed" ? (g.companions_confirmed ?? 0) : "-"}${g.companions_allowed ? ` / ${g.companions_allowed}` : ""}</td>
-              <td style="padding:10px;">${g.checked_in ? "✓ Presente" : "-"}</td>
-              <td style="padding:10px; white-space:nowrap;">
-                <button class="btn btn-secondary" style="padding:6px 10px; font-size:0.78rem;" data-send-invite="${g.id}" title="Enviar convite">✉</button>
-                ${g.rsvp_status === "confirmed" ? `<button class="btn btn-secondary" style="padding:6px 10px; font-size:0.78rem;" data-send-reminder="${g.id}" title="Enviar lembrete">🔔</button>` : ""}
+            <tr class="${g.checked_in ? "checked-in" : ""}">
+              <td class="cell-strong">${escapeHtml(g.full_name)}</td>
+              <td class="cell-accent">${escapeHtml(g.table_name || g.table_number || "-")}</td>
+              <td>${RSVP_STATUS_BADGE[g.rsvp_status] || RSVP_STATUS_BADGE.pending}</td>
+              <td class="hide-on-mobile cell-muted">${g.rsvp_status === "confirmed" ? (g.companions_confirmed ?? 0) : "-"}${g.companions_allowed ? ` / ${g.companions_allowed}` : ""}</td>
+              <td>${g.checked_in ? `<span class="badge badge-success">${icon("check", 13)} Presente</span>` : "-"}</td>
+              <td class="cell-actions">
+                <div class="action-icons">
+                  <button class="icon-btn" data-send-invite="${g.id}" title="Enviar convite" aria-label="Enviar convite a ${escapeHtml(g.full_name)}">${icon("mail")}</button>
+                  ${g.rsvp_status === "confirmed" ? `<button class="icon-btn" data-send-reminder="${g.id}" title="Enviar lembrete" aria-label="Enviar lembrete a ${escapeHtml(g.full_name)}">${icon("bell")}</button>` : ""}
+                </div>
               </td>
             </tr>
           `).join("")}
@@ -256,7 +258,7 @@ async function handleCreateGuestManual(e) {
   }
 
   btn.disabled = false;
-  btn.textContent = "+ Adicionar Convidado";
+  btn.innerHTML = `${icon("plus")} Adicionar convidado`;
 
   if (!result.success) {
     showToast(result.error || "Erro ao adicionar convidado.", "error");
@@ -289,7 +291,7 @@ async function handleImportGuests() {
   });
 
   btn.disabled = false;
-  btn.textContent = "⬆ Importar Lista de Convidados";
+  btn.innerHTML = `${icon("upload")} Importar lista de convidados`;
 
   if (!result.success) {
     showToast(result.error || "Erro ao importar convidados.", "error");

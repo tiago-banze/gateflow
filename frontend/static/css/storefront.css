@@ -18,7 +18,7 @@
 }
 
 .storefront-hero {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  background: var(--hero-gradient);
   color: #fff;
   padding: 28px 20px 24px;
   text-align: center;
@@ -269,7 +269,7 @@
 
 .sf-btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .sf-btn-primary:disabled {
@@ -303,7 +303,7 @@
 }
 
 .sf-success-icon {
-  font-size: 44px;
+  display:flex; justify-content:center; color: var(--color-success-text);
   text-align: center;
   margin-bottom: 6px;
 }

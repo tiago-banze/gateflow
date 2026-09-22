@@ -29,7 +29,7 @@
   color: var(--color-text);
 }
 
-.legal-brand img { height: 34px; width: auto; }
+.legal-brand img { height: 40px; width: 40px; border-radius: 11px; object-fit: contain; }
 
 .legal-back-link {
   display: inline-flex;
@@ -52,9 +52,9 @@
   margin: 0 auto;
   background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  padding: 36px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 40px;
 }
 
 .legal-content h1 {
@@ -73,8 +73,8 @@
 .legal-content h2 {
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--color-primary);
-  margin: 30px 0 10px;
+  color: var(--color-text);
+  margin: 32px 0 10px;
 }
 
 .legal-content h2:first-of-type { margin-top: 0; }
@@ -161,7 +161,7 @@
   height: 30px;
   border-radius: 50%;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--on-primary);
   display: flex;
   align-items: center;
   justify-content: center;

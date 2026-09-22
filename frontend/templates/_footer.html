@@ -1,12 +1,9 @@
-<!-- ==========================================================================
-     _footer.html — rodapé institucional, incluído em todas as páginas.
-     GUIA RÁPIDO: os únicos dados que precisas de trocar estão marcados
-     abaixo com SUBST_AQUI. Procura por esse texto neste ficheiro.
-     ========================================================================== -->
+{% from "_ui.html" import icon with context %}
 <footer class="site-footer">
   <div class="site-footer-inner">
     <div class="site-footer-brand">
-      {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />{% endif %}
+      {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" alt="" width="28" height="28" onerror="this.style.display='none'" />{% endif %}
+      GateFlow
     </div>
 
     <nav class="site-footer-links" aria-label="Links institucionais">
@@ -17,9 +14,9 @@
 
     <div class="site-footer-contact">
       <!-- SUBST_AQUI: troca o número após wa.me/258 pelo teu WhatsApp real -->
-      <a href="https://wa.me/258847388489" target="_blank" rel="noopener" title="Falar no WhatsApp">💬</a>
+      <a href="https://wa.me/258847388489" target="_blank" rel="noopener" title="Falar no WhatsApp" aria-label="Falar no WhatsApp">{{ icon('message') }}</a>
       <!-- SUBST_AQUI: troca pelo teu e-mail real -->
-      <a href="mailto:tiagovbanze@gmail.com" title="Enviar e-mail">✉</a>
+      <a href="mailto:tiagovbanze@gmail.com" title="Enviar e-mail" aria-label="Enviar e-mail">{{ icon('mail') }}</a>
     </div>
   </div>
 

@@ -1,33 +1,11 @@
+{% from "_ui.html" import icon, theme_toggle with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
- <meta charset="UTF-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
- <script>
- (function () {
- try {
- var theme = localStorage.getItem("gateflow-theme") || "light";
- document.documentElement.setAttribute("data-theme", theme);
- } catch (e) { /* localStorage indisponível; segue no tema padrão */ }
- })();
- </script>
- <title>GateFlow - Gestão de Convites e Check-in por QR Code</title>
- {% include "_og_meta.html" %}
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
- <!-- Carregamento assíncrono -->
- <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
- <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
- <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
- <!-- Isolado: só a landing page carrega este ficheiro -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}" />
-{% if gateflow_logo_available %}
- <link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
- <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
- <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
- <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
- {% endif %}
+  {% include "_head.html" %}
+  <title>GateFlow - Gestão de Convites e Check-in por QR Code</title>
+  {% include "_og_meta.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}" />
 </head>
 <body class="lp-body">
 
@@ -41,33 +19,31 @@
   {% endif %}
 {% endif %}
 
-<nav class="lp-navbar">
+<nav class="lp-navbar" aria-label="Principal">
   <div class="lp-navbar-inner">
-    <a href="{{ url_for('page_index') }}" class="lp-navbar-brand">
-      {% if gateflow_logo_available %}
-        <img src="{{ url_for('serve_asset', filename='GateFlow.png') }}" alt="GateFlow" />
-      {% else %}
-        GateFlow
-      {% endif %}
+    <a href="{{ url_for('page_index') }}" class="lp-navbar-brand" aria-label="GateFlow — início">
+      {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" alt="" width="36" height="36" onerror="this.style.display='none'" />{% endif %}
+      GateFlow
     </a>
 
     <input type="checkbox" id="lp-menu-toggle" class="lp-menu-checkbox" />
 
     <div class="lp-navbar-links">
       <a href="#servicos">Serviços</a>
-      <a href="#como-funciona">Como Funciona</a>
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#depoimentos">Depoimentos</a>
       <a href="#contacto">Contactos</a>
     </div>
 
     <div class="lp-navbar-actions">
-      <button class="theme-toggle theme-toggle-neutral" id="theme-toggle-btn" title="Alternar tema"></button>
+      {{ theme_toggle() }}
       {% if current_user %}
-        <a href="{{ my_panel_url }}" class="btn btn-secondary"><span class="btn-secondary-label">Meu Painel</span></a>
+        <a href="{{ my_panel_url }}" class="btn btn-primary">Meu painel</a>
       {% else %}
-        <a href="{{ url_for('page_login') }}" class="btn btn-secondary"><span class="btn-secondary-label">Entrar</span></a>
+        <a href="{{ url_for('page_login') }}" class="btn btn-secondary">Entrar</a>
+        <a href="{{ url_for('page_organizador_signup') }}" class="btn btn-primary">Criar conta</a>
       {% endif %}
-      <a href="#acessos" class="btn btn-primary">Aceder ao Sistema</a>
-      <label for="lp-menu-toggle" class="lp-navbar-toggle" aria-label="Abrir menu">☰</label>
+      <label for="lp-menu-toggle" class="lp-navbar-toggle" aria-label="Abrir menu">{{ icon('menu', 22) }}</label>
     </div>
   </div>
 </nav>
@@ -75,31 +51,35 @@
 <header class="lp-hero">
   <div class="lp-hero-inner">
     <div class="lp-hero-copy">
-      <span class="lp-eyebrow">🇲🇿 Feito para portarias reais</span>
-      <h1 class="lp-hero-title">A tua lista de convidados nunca mais fica <em>presa numa folha de papel</em>.</h1>
+      <span class="lp-eyebrow">{{ icon('sparkles') }} Feito para portarias reais</span>
+      <h1 class="lp-hero-title">A sua lista de convidados nunca mais fica <em>presa numa folha de papel</em>.</h1>
       <p class="lp-hero-sub">
-        Gere convites por WhatsApp, SMS ou e-mail, acompanha as confirmações de presença em tempo real
-        e valida a entrada de cada convidado em segundos — na portaria, com QR Code, mesmo sem internet.
+        Envie convites por WhatsApp, SMS ou e-mail, acompanhe as confirmações de presença em tempo real
+        e valide a entrada de cada convidado em segundos — na portaria, com QR Code, mesmo sem internet.
       </p>
 
       <div class="lp-hero-ctas">
-        <a href="#acessos" class="btn btn-primary btn-lg">Aceder ao Sistema</a>
-        <a href="#como-funciona" class="btn btn-secondary btn-lg">Como Funciona</a>
+        {% if current_user %}
+          <a href="{{ my_panel_url }}" class="btn btn-primary btn-lg">Abrir o meu painel {{ icon('arrow-right') }}</a>
+        {% else %}
+          <a href="{{ url_for('page_organizador_signup') }}" class="btn btn-primary btn-lg">Começar grátis {{ icon('arrow-right') }}</a>
+          <a href="#como-funciona" class="btn btn-secondary btn-lg">Ver como funciona</a>
+        {% endif %}
       </div>
 
       {% if current_user %}
         <p class="lp-hero-login">
-          Já estás ligado como <strong>{{ current_user.username }}</strong> ({{ current_user.role }}).
+          Sessão iniciada como <strong>{{ current_user.username }}</strong> ({{ current_user.role }}).
           <a href="{{ url_for('page_logout') }}">Sair</a>
         </p>
       {% else %}
-        <p class="lp-hero-login">Já tens conta? <a href="{{ url_for('page_login') }}">Entrar</a></p>
+        <p class="lp-hero-login">Já tem conta? <a href="{{ url_for('page_login') }}">Entrar</a></p>
       {% endif %}
 
       <div class="lp-hero-badges">
-        <span class="lp-hero-badge">⚡ Check-in em segundos</span>
-        <span class="lp-hero-badge">📱 100% feito para o telemóvel</span>
-        <span class="lp-hero-badge">🔒 QR Code único por convidado</span>
+        <span class="lp-hero-badge">{{ icon('zap') }} Check-in em segundos</span>
+        <span class="lp-hero-badge">{{ icon('smartphone') }} Feito para o telemóvel</span>
+        <span class="lp-hero-badge">{{ icon('shield-check') }} QR Code único por convidado</span>
       </div>
     </div>
 
@@ -111,45 +91,46 @@
         <span>Duarte Sitoe</span>
         <span>Elsa Muianga</span>
       </div>
-      <span class="lp-mock-arrow">→</span>
+      <span class="lp-mock-arrow">{{ icon('arrow-right') }}</span>
       <div class="lp-mock-card">
-        <div class="lp-mock-check">✓</div>
+        <div class="lp-mock-check">{{ icon('check') }}</div>
         <div class="lp-mock-name">Célia Mondlane</div>
         <div class="lp-mock-label">Entrada confirmada</div>
-        <div class="lp-mock-table">MESA 12</div>
+        <div class="lp-mock-table">MESA<strong>12</strong></div>
       </div>
+      <div class="lp-mock-chip">{{ icon('users') }}<div>142 / 180<small>convidados presentes</small></div></div>
     </div>
   </div>
 </header>
 
-<section class="lp-section" aria-label="Números do GateFlow">
+<section class="lp-section lp-stats-section" aria-label="Números do GateFlow">
   <div class="lp-section-inner">
     <div class="lp-stats-grid">
       <div class="lp-stat-card">
-        <div class="lp-stat-icon">⏱</div>
+        <div class="lp-stat-icon">{{ icon('clock') }}</div>
         <div class="lp-stat-value">&lt; 3 segundos</div>
         <div class="lp-stat-label">para validar cada convidado, mesmo com a fila grande</div>
       </div>
       <div class="lp-stat-card">
-        <div class="lp-stat-icon">📱</div>
-        <div class="lp-stat-value">100% Mobile-first</div>
+        <div class="lp-stat-icon">{{ icon('smartphone') }}</div>
+        <div class="lp-stat-value">100% mobile-first</div>
         <div class="lp-stat-label">pensado para o ecrã do porteiro, não adaptado depois</div>
       </div>
       <div class="lp-stat-card">
-        <div class="lp-stat-icon">🔐</div>
+        <div class="lp-stat-icon">{{ icon('qr') }}</div>
         <div class="lp-stat-value">1 QR único</div>
         <div class="lp-stat-label">por convidado — impossível de duplicar ou reutilizar</div>
       </div>
       <div class="lp-stat-card">
-        <div class="lp-stat-icon">📶</div>
-        <div class="lp-stat-value">Roda localmente</div>
-        <div class="lp-stat-label">a portaria continua a funcionar sem depender de internet externa</div>
+        <div class="lp-stat-icon">{{ icon('wifi-off') }}</div>
+        <div class="lp-stat-value">Resiste à falta de rede</div>
+        <div class="lp-stat-label">a portaria continua a validar com a lista guardada no aparelho</div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="lp-section lp-section--muted" id="servicos">
+<section class="lp-section" id="servicos">
   <div class="lp-section-inner">
     <div class="lp-section-head">
       <div class="lp-section-eyebrow">O que oferecemos</div>
@@ -159,35 +140,35 @@
 
     <div class="lp-services-grid">
       <div class="lp-service-card">
-        <div class="lp-service-icon">🎟</div>
-        <h3>Convites Digitais</h3>
-        <p>Cria a página do teu evento e emite convites digitais para cada convidado, com um QR Code seguro e único pronto a enviar na hora.</p>
+        <div class="lp-service-icon">{{ icon('ticket') }}</div>
+        <h3>Convites digitais</h3>
+        <p>Crie a página do seu evento e emita convites para cada convidado, com um QR Code seguro e único, pronto a enviar na hora.</p>
       </div>
       <div class="lp-service-card">
-        <div class="lp-service-icon">📷</div>
-        <h3>Check-in de Porteiro</h3>
-        <p>Na entrada, o porteiro lê o QR Code ou busca o convidado por nome — a confirmação e a mesa aparecem no ecrã em segundos.</p>
+        <div class="lp-service-icon">{{ icon('scan') }}</div>
+        <h3>Check-in do porteiro</h3>
+        <p>Na entrada, o porteiro lê o QR Code ou procura o convidado por nome — a confirmação e a mesa aparecem no ecrã em segundos.</p>
       </div>
       <div class="lp-service-card">
-        <div class="lp-service-icon">📊</div>
-        <h3>Dashboard de Gestão</h3>
-        <p>Organizadores e Administradores acompanham convidados, mesas e entradas confirmadas em tempo real, de qualquer lugar.</p>
+        <div class="lp-service-icon">{{ icon('bar-chart') }}</div>
+        <h3>Painel de gestão</h3>
+        <p>Organizadores e administradores acompanham convidados, mesas e entradas confirmadas em tempo real, de qualquer lugar.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="lp-section" id="como-funciona">
+<section class="lp-section lp-section--muted" id="como-funciona">
   <div class="lp-section-inner">
     <div class="lp-section-head">
-      <div class="lp-section-eyebrow">Como Funciona</div>
+      <div class="lp-section-eyebrow">Como funciona</div>
       <h2 class="lp-section-title">Três passos, do cadastro à porta do evento</h2>
     </div>
 
     <div class="lp-steps">
       <div class="lp-step">
         <div class="lp-step-number">01</div>
-        <h3>Escolha ou crie o seu evento</h3>
+        <h3>Crie o seu evento</h3>
         <p>Cadastre o evento e importe a lista de convidados em formato Excel.</p>
       </div>
       <div class="lp-step">
@@ -198,15 +179,16 @@
       <div class="lp-step">
         <div class="lp-step-number">03</div>
         <h3>Faça o check-in na porta</h3>
-        <p>O porteiro lê o QR Code (ou busca o nome), e a entrada fica validada e registada instantaneamente.</p>
+        <p>O porteiro lê o QR Code (ou procura o nome) e a entrada fica validada e registada instantaneamente.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="lp-section lp-section--muted">
+<section class="lp-section">
   <div class="lp-section-inner">
     <div class="lp-story-inner">
+      <span class="lp-story-quote">{{ icon('quote') }}</span>
       <p>
         O GateFlow nasceu numa noite real, à porta de um casamento onde fomos chamados para
         ser porteiros. Não havia sistema nenhum — só uma brochura de folhas soltas com os nomes
@@ -219,53 +201,53 @@
         O GateFlow existe para que nenhum porteiro tenha de passar pelo que passámos ali — hoje
         basta um QR Code e uma leitura para o convidado já estar dentro.
       </p>
-      <div class="lp-story-sign">— Tiago Banze, criador do GateFlow</div>
+      <div class="lp-story-sign"><span class="avatar">TB</span><div>Tiago Banze<small>Criador do GateFlow</small></div></div>
     </div>
   </div>
 </section>
 
-<section class="lp-section" id="acessos">
+<section class="lp-section lp-section--muted" id="acessos">
   <div class="lp-section-inner">
     <div class="lp-section-head">
-      <div class="lp-section-eyebrow">Atalhos Rápidos</div>
-      <h2 class="lp-section-title">Aceda ao painel que precisa</h2>
+      <div class="lp-section-eyebrow">Atalhos rápidos</div>
+      <h2 class="lp-section-title">Aceda ao painel de que precisa</h2>
       <p class="lp-section-sub">Já tem uma conta ou quer testar o sistema? Comece por aqui.</p>
     </div>
 
     <div class="lp-access-grid">
       <a href="{{ url_for('page_admin') if current_user and current_user.role == 'admin' else url_for('page_login', intent='admin') }}" class="lp-access-card">
-        <div class="lp-access-icon">🛠</div>
+        <div class="lp-access-icon">{{ icon('shield-check') }}</div>
         <h3>Administrador</h3>
         <p>Cadastre eventos, importe convidados e gere os convites com QR Code.</p>
-        <div class="lp-access-arrow">Aceder →</div>
+        <div class="lp-access-arrow">Aceder {{ icon('arrow-right') }}</div>
       </a>
 
       <a href="{{ url_for('page_organizador_dashboard') if current_user and current_user.role == 'organizador' else url_for('page_organizador_signup') }}" class="lp-access-card">
-        <div class="lp-access-icon">🗂</div>
-        <h3>Sou Organizador</h3>
-        <p>Crie a sua conta gratuita e gerencie os seus próprios eventos e convidados.</p>
+        <div class="lp-access-icon">{{ icon('layers') }}</div>
+        <h3>Sou organizador</h3>
+        <p>Crie a sua conta gratuita e gira os seus próprios eventos e convidados.</p>
         <div class="lp-access-arrow">
-          {% if current_user and current_user.role == 'organizador' %}Aceder →{% else %}Criar conta →{% endif %}
+          {% if current_user and current_user.role == 'organizador' %}Aceder{% else %}Criar conta{% endif %} {{ icon('arrow-right') }}
         </div>
       </a>
 
       <a href="{{ url_for('page_checkin') if current_user else url_for('page_login', intent='porteiro') }}" class="lp-access-card">
-        <div class="lp-access-icon">📷</div>
+        <div class="lp-access-icon">{{ icon('scan') }}</div>
         <h3>Porteiro</h3>
-        <p>Busque convidados por nome ou leia o QR Code na entrada para registar a presença.</p>
-        <div class="lp-access-arrow">Aceder →</div>
+        <p>Procure convidados por nome ou leia o QR Code na entrada para registar a presença.</p>
+        <div class="lp-access-arrow">Aceder {{ icon('arrow-right') }}</div>
       </a>
 
-      <div class="lp-access-card lp-access-card--highlight" style="cursor:default;">
-        <div class="lp-access-icon">💌</div>
-        <h3>É Convidado(a)?</h3>
-        <p>Vais receber o teu link pessoal de confirmação de presença por WhatsApp, SMS ou e-mail — não precisas de conta nem de procurar nada aqui.</p>
+      <div class="lp-access-card lp-access-card--highlight">
+        <div class="lp-access-icon">{{ icon('mail') }}</div>
+        <h3>É convidado(a)?</h3>
+        <p>Vai receber o seu link pessoal de confirmação de presença por WhatsApp, SMS ou e-mail — não precisa de conta nem de procurar nada aqui.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="lp-section lp-section--muted" id="depoimentos">
+<section class="lp-section" id="depoimentos">
   <div class="lp-section-inner">
     <div class="lp-section-head">
       <div class="lp-section-eyebrow">Depoimentos</div>
@@ -286,42 +268,55 @@
         <p class="lp-testimonial-comment">{{ feedback.comment }}</p>
       </div>
       {% else %}
-      <p class="lp-testimonial-empty">Ainda não há depoimentos — sê o primeiro a partilhar a tua experiência.</p>
+      <p class="lp-testimonial-empty">Ainda não há depoimentos — seja o primeiro a partilhar a sua experiência.</p>
       {% endfor %}
     </div>
 
     <div class="lp-testimonials-actions">
       <button type="button" class="btn btn-secondary" id="lp-btn-view-all-testimonials">Ver todos os comentários</button>
-      <button type="button" class="btn btn-primary" id="lp-btn-open-testimonial-form">✍ Deixar o meu comentário</button>
+      <button type="button" class="btn btn-primary" id="lp-btn-open-testimonial-form">{{ icon('edit') }} Deixar o meu comentário</button>
     </div>
   </div>
 </section>
 
+<section class="lp-cta-band">
+  <div class="lp-cta-inner">
+    <div>
+      <h2>Pronto para o seu próximo evento?</h2>
+      <p>Crie a sua conta grátis e envie os primeiros convites hoje.</p>
+    </div>
+    {% if current_user %}
+      <a href="{{ my_panel_url }}" class="btn btn-primary btn-lg">Abrir o meu painel {{ icon('arrow-right') }}</a>
+    {% else %}
+      <a href="{{ url_for('page_organizador_signup') }}" class="btn btn-primary btn-lg">Criar conta grátis {{ icon('arrow-right') }}</a>
+    {% endif %}
+  </div>
+</section>
+
 <!-- ==================== MODAL: TODOS OS DEPOIMENTOS ==================== -->
-<div class="modal-overlay hidden lp-testimonials-modal" id="lp-testimonials-modal">
+<div class="modal-overlay hidden lp-testimonials-modal" id="lp-testimonials-modal" role="dialog" aria-modal="true" aria-labelledby="lp-testimonials-title">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 style="margin:0;">Todos os comentários</h3>
-      <button class="btn btn-secondary" id="lp-btn-close-testimonials-modal">✕ Fechar</button>
+      <h3 id="lp-testimonials-title">Todos os comentários</h3>
+      <button class="icon-btn" id="lp-btn-close-testimonials-modal" aria-label="Fechar">{{ icon('x') }}</button>
     </div>
-    <div class="lp-testimonials-modal-list" id="lp-testimonials-modal-list" aria-live="polite">
-    </div>
+    <div class="lp-testimonials-modal-list" id="lp-testimonials-modal-list" aria-live="polite"></div>
   </div>
 </div>
 
 <!-- ==================== MODAL: NOVO DEPOIMENTO ==================== -->
-<div class="modal-overlay hidden" id="lp-testimonial-form-modal">
+<div class="modal-overlay hidden" id="lp-testimonial-form-modal" role="dialog" aria-modal="true" aria-labelledby="lp-testimonial-form-title">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 style="margin:0;">Deixe o seu comentário</h3>
-      <button class="btn btn-secondary" id="lp-btn-close-testimonial-form">✕ Fechar</button>
+      <h3 id="lp-testimonial-form-title">Deixe o seu comentário</h3>
+      <button class="icon-btn" id="lp-btn-close-testimonial-form" aria-label="Fechar">{{ icon('x') }}</button>
     </div>
     <form id="lp-testimonial-form">
       <label for="lp-testimonial-name">Nome *</label>
       <input type="text" id="lp-testimonial-name" required maxlength="80" placeholder="O seu nome" />
 
       <label for="lp-testimonial-email">E-mail *</label>
-      <input type="email" id="lp-testimonial-email" required maxlength="150" placeholder="usado só para gerar o seu avatar (Gravatar)" />
+      <input type="email" id="lp-testimonial-email" required maxlength="150" placeholder="Usado só para gerar o seu avatar (Gravatar)" />
 
       <label>Nota *</label>
       <div class="lp-star-input" id="lp-star-input" role="radiogroup" aria-label="Nota de 1 a 5 estrelas">
@@ -336,7 +331,7 @@
       <textarea id="lp-testimonial-comment" required maxlength="500" placeholder="Conte a sua experiência com o GateFlow..."></textarea>
 
       <div class="form-row-inline">
-        <button type="submit" class="btn btn-primary btn-block" id="lp-btn-submit-testimonial">Enviar comentário</button>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="lp-btn-submit-testimonial">Enviar comentário</button>
       </div>
     </form>
   </div>

@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
  loadGuests("");
  document.getElementById("btn-import").addEventListener("click", handleImportGuests);
  document.getElementById("btn-export-pdf").addEventListener("click", () =>
- downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf", "Baixar Documento de Convites", "Gerando PDF...")
+ downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf", `${icon("download")} Baixar documento de convites`, "Gerando PDF...")
  );
  // Atalho no topo da página (Problema 3): o botão original fica dentro do
  // card "Documentos e Relatórios", mais abaixo -- este duplica a mesma
@@ -37,14 +37,14 @@ document.addEventListener("DOMContentLoaded", () => {
  const quickPdfBtn = document.getElementById("btn-export-pdf-quick");
  if (quickPdfBtn) {
  quickPdfBtn.addEventListener("click", () =>
- downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf-quick", "⬇ Baixar PDF de Convites", "Gerando PDF...")
+ downloadFile(`/api/events/${EVENT_ID}/guests/export-pdf`, "btn-export-pdf-quick", `${icon("download")} Baixar PDF de convites`, "Gerando PDF...")
  );
  }
  document.getElementById("btn-export-contingency").addEventListener("click", () =>
- downloadFile(`/api/events/${EVENT_ID}/guests/contingency-pdf`, "btn-export-contingency", "Baixar Lista de Contingência (PDF)", "Gerando PDF...")
+ downloadFile(`/api/events/${EVENT_ID}/guests/contingency-pdf`, "btn-export-contingency", `${icon("file-text")} Baixar lista de contingência (PDF)`, "Gerando PDF...")
  );
  document.getElementById("btn-export-attendance").addEventListener("click", () =>
- downloadFile(`/api/events/${EVENT_ID}/guests/attendance-report`, "btn-export-attendance", "Baixar Relatório de Presença (CSV)", "Gerando CSV...")
+ downloadFile(`/api/events/${EVENT_ID}/guests/attendance-report`, "btn-export-attendance", `${icon("bar-chart")} Baixar relatório de presença (CSV)`, "Gerando CSV...")
  );
  document.getElementById("form-new-guest").addEventListener("submit", handleCreateGuestManual);
  document.getElementById("form-edit-guest").addEventListener("submit", handleSaveEditGuest);
@@ -59,9 +59,9 @@ function renderStats(stats) {
  const statsEl = document.getElementById("detail-stats");
  if (!stats) { statsEl.innerHTML = ""; return; }
  statsEl.innerHTML = `
- <span class="stat-pill">Total: ${stats.total}</span>
- <span class="stat-pill success">Presentes: ${stats.checked_in}</span>
- <span class="stat-pill pending">Pendentes: ${stats.pending}</span>
+ <div class="stat-pill"><span class="stat-label">Total</span><span class="stat-value">${stats.total}</span></div>
+ <div class="stat-pill success"><span class="stat-label">Presentes</span><span class="stat-value">${stats.checked_in}</span></div>
+ <div class="stat-pill pending"><span class="stat-label">Pendentes</span><span class="stat-value">${stats.pending}</span></div>
  `;
 
  const miniCountEl = document.getElementById("event-mini-count");
@@ -94,37 +94,35 @@ async function loadGuests(search) {
  <div class="table-responsive">
  <table>
  <thead>
- <tr style="text-align:left; border-bottom:2px solid #EEF1F4;">
- <th style="padding:10px;">Nome</th>
- <th class="hide-on-mobile" style="padding:10px;">Cargo/Tipo</th>
- <th style="padding:10px;">Mesa</th>
- <th style="padding:10px;">Email</th>
- <th class="hide-on-mobile" style="padding:10px;">Telefone</th>
- <th style="padding:10px;">Status</th>
- <th style="padding:10px;">Convite</th>
- <th style="padding:10px;"></th>
+ <tr>
+ <th>Nome</th>
+ <th class="hide-on-mobile">Cargo/Tipo</th>
+ <th>Mesa</th>
+ <th>Email</th>
+ <th class="hide-on-mobile">Telefone</th>
+ <th>Status</th>
+ <th>Convite</th>
+ <th><span class="sr-only">Ações</span></th>
  </tr>
  </thead>
  <tbody>
  ${guests.map((g) => `
- <tr style="border-bottom:1px solid #F1F3F5; ${g.checked_in ? "background:#F5FCF5;" : ""}">
- <td style="padding:10px; font-weight:600;">${escapeHtml(g.full_name)}</td>
- <td class="hide-on-mobile" style="padding:10px;">${escapeHtml(g.role || "-")}</td>
- <td style="padding:10px; font-weight:700; color:var(--color-primary);">${escapeHtml(g.table_number || "Não definida")}</td>
- <td style="padding:10px;">${escapeHtml(g.email || "-")}</td>
- <td class="hide-on-mobile" style="padding:10px;">${escapeHtml(g.phone || "-")}</td>
- <td style="padding:10px;">
+ <tr class="${g.checked_in ? "checked-in" : ""}">
+ <td class="cell-strong">${escapeHtml(g.full_name)}</td>
+ <td class="hide-on-mobile">${escapeHtml(g.role || "-")}</td>
+ <td class="cell-accent">${escapeHtml(g.table_number || "Não definida")}</td>
+ <td class="cell-muted">${escapeHtml(g.email || "-")}</td>
+ <td class="hide-on-mobile cell-muted">${escapeHtml(g.phone || "-")}</td>
+ <td>
  ${g.checked_in
- ? `<span class="badge" style="background:#E0F7E0; color:#1B7A1B;"> Presente</span>`
- : `<span class="badge">Pendente</span>`}
+ ? `<span class="badge badge-success">${icon("check", 13)} Presente</span>`
+ : `<span class="badge badge-muted">Pendente</span>`}
  </td>
- <td style="padding:10px;">
- ${renderInviteCell(g)}
- </td>
- <td style="padding:10px;">
+ <td>${renderInviteCell(g)}</td>
+ <td class="cell-actions">
  <div class="action-icons">
- <button class="icon-btn icon-btn-edit" title="Editar" data-edit-guest="${g.id}">✎</button>
- <button class="icon-btn icon-btn-delete" title="Excluir" data-delete-guest="${g.id}">🗑</button>
+ <button class="icon-btn icon-btn-edit" title="Editar" aria-label="Editar ${escapeHtml(g.full_name)}" data-edit-guest="${g.id}">${icon("edit")}</button>
+ <button class="icon-btn icon-btn-delete" title="Excluir" aria-label="Excluir ${escapeHtml(g.full_name)}" data-delete-guest="${g.id}">${icon("trash")}</button>
  </div>
  </td>
  </tr>
@@ -151,24 +149,21 @@ async function loadGuests(search) {
 
 function renderInviteCell(g) {
  if (!g.email) {
- return `<span class="badge" style="background:var(--color-hover-bg); color:var(--color-text-muted);" title="Sem e-mail cadastrado">—</span>`;
+ return `<span class="badge badge-muted" title="Sem e-mail cadastrado">—</span>`;
  }
 
  let badge;
  if (g.invite_email_status === "sent") {
- badge = `<span class="badge" style="background:#E0F7E0; color:#1B7A1B;">Enviado</span>`;
+ badge = `<span class="badge badge-success">${icon("check", 13)} Enviado</span>`;
  } else if (g.invite_email_status === "failed") {
- badge = `<span class="badge" style="background:var(--color-error-bg); color:var(--color-error);">Falhou</span>`;
+ badge = `<span class="badge badge-danger">${icon("x", 13)} Falhou</span>`;
  } else {
- badge = `<span class="badge">Pendente</span>`;
+ badge = `<span class="badge badge-muted">Pendente</span>`;
  }
 
  const label = g.invite_email_status === "sent" ? "Reenviar" : "Enviar Convite";
  return `
- <div style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
- ${badge}
- <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.72rem; min-height:auto;" data-send-invite="${g.id}">${label}</button>
- </div>
+ <div style="display:flex; flex-direction:column; align-items:flex-start; gap:6px;"> ${badge} <button type="button" class="btn btn-secondary btn-sm" data-send-invite="${g.id}">${label}</button> </div>
  `;
 }
 
@@ -213,7 +208,7 @@ async function handleImportGuests() {
  });
 
  btn.disabled = false;
- btn.textContent = "Importar Lista de Convidados";
+ btn.innerHTML = `${icon("upload")} Importar lista de convidados`;
 
  if (!result.success) {
  showToast(result.error || "Erro ao importar convidados.", "error");
@@ -254,7 +249,7 @@ async function handleCreateGuestManual(e) {
  });
 
  btn.disabled = false;
- btn.textContent = "Adicionar Convidado";
+ btn.innerHTML = `${icon("plus")} Adicionar convidado`;
 
  if (!result.success) {
  showToast(result.error || "Erro ao adicionar convidado.", "error");
@@ -312,7 +307,7 @@ async function handleSaveEditGuest(e) {
  });
 
  btn.disabled = false;
- btn.textContent = "Salvar Alterações";
+ btn.innerHTML = `${icon("check")} Salvar alterações`;
 
  if (!result.success) {
  showToast(result.error || "Erro ao editar convidado.", "error");

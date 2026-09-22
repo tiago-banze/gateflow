@@ -1,0 +1,27 @@
+{#- Cabeçalho comum (meta, tema anti-flash, fontes, CSS base, favicons). -#}
+<meta charset="UTF-8" />
+{#- Sem maximum-scale: permitir zoom é requisito de acessibilidade (WCAG 1.4.4). Os campos usam 16px, por isso o iOS não dá zoom automático. -#}
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#071A26" />
+<meta name="color-scheme" content="light dark" />
+<script>
+  (function () {
+    try {
+      var theme = localStorage.getItem("gateflow-theme");
+      if (!theme) theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+    } catch (e) { /* localStorage indisponível: segue no tema claro */ }
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" /></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}" />
+{% if gateflow_logo_available %}
+<link rel="icon" type="image/x-icon" href="{{ url_for('serve_asset', filename='favicon.ico') }}" />
+<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('serve_asset', filename='favicon-32.png') }}" />
+<link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('serve_asset', filename='favicon-16.png') }}" />
+<link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('serve_asset', filename='favicon-192.png') }}" />
+{% endif %}
