@@ -18,7 +18,6 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 import config
-import ticket_security
 
 logger = logging.getLogger("gateflow.database")
 
@@ -277,12 +276,13 @@ def init_db():
         # lógica futura que assuma que event_module sempre tem um valor.
         conn.execute("UPDATE events SET event_module = 'A' WHERE event_module IS NULL")
 
-        # --- Fase 4: Storefront publico, precos online e slug de URL ---
+        # --- Colunas LEGADAS (venda de bilhetes, descontinuada) ---
+        # Mantidas apenas para não apagar dados de bases já existentes; o
+        # código atual não lê nem escreve preços/slug/capacidades.
         _migrate_add_column_if_missing(conn, "events", "price_vip", "REAL NOT NULL DEFAULT 0")
         _migrate_add_column_if_missing(conn, "events", "price_normal", "REAL NOT NULL DEFAULT 0")
         _migrate_add_column_if_missing(conn, "events", "slug", "TEXT")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_events_slug ON events (slug)")
-        _backfill_event_slugs(conn)
 
         # --- Fase 5: sessao unica por utilizador ---
         _migrate_add_column_if_missing(conn, "users", "active_session_token", "TEXT")
@@ -341,6 +341,9 @@ def init_db():
         # tentado -- convidados antigos continuam válidos, só aparecem como
         # "Pendente".
         _migrate_add_column_if_missing(conn, "guests", "invite_email_status", "TEXT")
+        # --- Fase 10: resultado real do último envio (canais usados / erro) ---
+        _migrate_add_column_if_missing(conn, "guests", "notify_channels", "TEXT")
+        _migrate_add_column_if_missing(conn, "guests", "notify_error", "TEXT")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_guests_rsvp_token ON guests (rsvp_token)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_guests_rsvp_status ON guests (event_id, rsvp_status)")
 
@@ -377,8 +380,7 @@ def _migrate_users_multitenancy(conn):
                          se organizador_id estiver preenchido, é um
                          porteiro criado por um Organizador específico
                          e só verá os eventos DESSE organizador (Fase 2).
-      - 'cliente'     -> Comprador de bilhetes (NOVO — schema pronto,
-                         fluxo de cadastro vem em fase futura).
+      - 'cliente'     -> legado, sem uso (sem venda de bilhetes).
 
     IMPORTANTE: usuários 'admin' e 'porteiro' já existentes NÃO são
     renomeados nem tocados — apenas passam a caber num CHECK constraint
@@ -469,43 +471,6 @@ def _migrate_add_column_if_missing(conn, table_name, column_name, column_type):
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
 
-def _slugify(text):
-    """Slug de URL simples (letras minusculas, digitos e hifens)."""
-    import re
-    import unicodedata
-
-    if not text:
-        return ""
-    normalized = unicodedata.normalize("NFKD", text)
-    without_accents = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", without_accents.lower())
-    return slug.strip("-")
-
-
-def generate_unique_event_slug(conn, name, event_id):
-    """Gera um slug unico (URL publica /e/<slug>) a partir do nome do evento; nunca falha, nunca gera slug vazio."""
-    base = _slugify(name) or "evento"
-    short_id = event_id.replace("-", "")[:8]
-    candidate = f"{base}-{short_id}"
-
-    suffix = 0
-    final_candidate = candidate
-    while conn.execute(
-        "SELECT 1 FROM events WHERE slug = ? AND id != ?", (final_candidate, event_id)
-    ).fetchone():
-        suffix += 1
-        final_candidate = f"{candidate}-{suffix}"
-    return final_candidate
-
-
-def _backfill_event_slugs(conn):
-    """Gera o slug para todo evento existente que ainda nao tem um (idempotente)."""
-    rows = conn.execute("SELECT id, name FROM events WHERE slug IS NULL OR slug = ''").fetchall()
-    for row in rows:
-        slug = generate_unique_event_slug(conn, row["name"], row["id"])
-        conn.execute("UPDATE events SET slug = ? WHERE id = ?", (slug, row["id"]))
-
-
 # --------------------------------------------------------------------------
 # EVENTOS
 # --------------------------------------------------------------------------
@@ -524,45 +489,22 @@ def create_event(name, location, description, event_date):
     return get_event(event_id)
 
 
-VALID_EVENT_MODULES = ("A", "B")
-
-
-def create_event_full(organizador_id, event_module, name, organizer_display_name, location, event_date,
-                       description="", contact_phone="", logo_path=None,
-                       capacity_vip=None, capacity_normal=None, capacity_total=None,
-                       price_vip=0, price_normal=0):
-    """
-    Cria um evento pelo fluxo do Organizador (Fase 2), suportando os dois
-    módulos. `event_module` já deve vir validado como 'A' ou 'B' pelo
-    chamador (rota da API) — esta camada só persiste.
-
-    Fase 4: eventos do Módulo B também recebem `price_vip`/`price_normal`
-    (preços de venda ONLINE, em Meticais — usados pelo storefront público
-    e pelo cálculo da taxa SaaS de 5%) e um `slug` único, gerado
-    automaticamente a partir do nome, para compor a URL pública /e/<slug>.
-    """
-    if event_module not in VALID_EVENT_MODULES:
-        raise ValueError(f"event_module inválido: {event_module!r}")
-
+def create_event_full(organizador_id, name, organizer_display_name, location, event_date, description=""):
+    """Cria um evento (lista fechada de convidados) pelo fluxo do Organizador."""
     event_id = str(uuid.uuid4())
     created_at = datetime.utcnow().isoformat()
     with get_connection() as conn:
-        slug = generate_unique_event_slug(conn, name, event_id)
         conn.execute(
             """
             INSERT INTO events (
                 id, name, location, description, event_date, created_at,
-                organizador_id, event_module, organizer_display_name, is_paid,
-                logo_path, contact_phone, capacity_vip, capacity_normal, capacity_total,
-                price_vip, price_normal, slug
+                organizador_id, event_module, organizer_display_name, is_paid
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, 0)
             """,
             (
                 event_id, name, location, description, event_date, created_at,
-                organizador_id, event_module, organizer_display_name,
-                logo_path, contact_phone, capacity_vip, capacity_normal, capacity_total,
-                price_vip or 0, price_normal or 0, slug,
+                organizador_id, organizer_display_name,
             ),
         )
     return get_event(event_id)
@@ -578,11 +520,7 @@ def update_event_by_organizador(event_id, organizador_id, **fields):
 
     Retorna (event: dict|None, found_and_owned: bool).
     """
-    allowed_fields = {
-        "name", "location", "description", "event_date", "organizer_display_name",
-        "contact_phone", "logo_path", "capacity_vip", "capacity_normal", "capacity_total",
-        "price_vip", "price_normal",
-    }
+    allowed_fields = {"name", "location", "description", "event_date", "organizer_display_name"}
     updates = {k: v for k, v in fields.items() if k in allowed_fields and v is not None}
     if not updates:
         event = get_event(event_id)
@@ -1119,6 +1057,16 @@ def list_porteiros_by_organizador(organizador_id):
         return [_row_to_dict(row) for row in cursor.fetchall()]
 
 
+def delete_porteiro_of_organizador(porteiro_id, organizador_id):
+    """Remove um porteiro SOMENTE se foi criado por este organizador (checagem no próprio DELETE)."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM users WHERE id = ? AND role = 'porteiro' AND organizador_id = ?",
+            (porteiro_id, organizador_id),
+        )
+        return cursor.rowcount > 0
+
+
 def list_users():
     """Não retorna password_hash, apenas metadados — usado em telas administrativas."""
     with get_connection() as conn:
@@ -1276,11 +1224,25 @@ def set_guest_companions_allowed(event_id, guest_id, companions_allowed):
         return _row_to_dict(row)
 
 
-def mark_guest_invite_sent(guest_id):
+def record_guest_notification(guest_id, kind, delivered, channels, error=None):
+    """
+    Grava o resultado REAL de um envio (convite ou lembrete). `invite_sent_at`
+    / `reminder_sent_at` só são preenchidos quando ao menos um canal
+    confirmou o envio -- assim "pendente" nunca esconde uma falha silenciosa.
+    `channels`: lista de canais com sucesso (ex: ["whatsapp", "email"]).
+    """
+    now_iso = datetime.utcnow().isoformat()
+    column = "invite_sent_at" if kind == "invite" else "reminder_sent_at"
     with get_connection() as conn:
-        conn.execute(
-            "UPDATE guests SET invite_sent_at = ? WHERE id = ?", (datetime.utcnow().isoformat(), guest_id)
-        )
+        if delivered:
+            conn.execute(
+                f"UPDATE guests SET {column} = ?, notify_channels = ?, notify_error = NULL WHERE id = ?",
+                (now_iso, ",".join(channels), guest_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE guests SET notify_error = ? WHERE id = ?", ((error or "Falha no envio")[:300], guest_id)
+            )
 
 
 def mark_guest_invite_email_status(guest_id, status):
@@ -1303,13 +1265,6 @@ def mark_guest_invite_email_status(guest_id, status):
                 "UPDATE guests SET invite_email_status = ? WHERE id = ?",
                 (status, guest_id),
             )
-
-
-def mark_guest_reminder_sent(guest_id):
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE guests SET reminder_sent_at = ? WHERE id = ?", (datetime.utcnow().isoformat(), guest_id)
-        )
 
 
 def list_guests_pending_invite(event_id):
@@ -1404,8 +1359,6 @@ def get_event_live_checkin_stats(event_id):
         event_row = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
         if event_row is None:
             return None
-        event = _row_to_dict(event_row)
-
         total = conn.execute("SELECT COUNT(*) AS c FROM guests WHERE event_id = ?", (event_id,)).fetchone()["c"]
         checked_in = conn.execute(
             "SELECT COUNT(*) AS c FROM guests WHERE event_id = ? AND checked_in = 1", (event_id,)
@@ -1425,7 +1378,6 @@ def get_event_live_checkin_stats(event_id):
 
     attendance_rate = round((checked_in / total * 100), 1) if total > 0 else 0.0
     return {
-        "event_module": event["event_module"],
         "total": total,
         "checked_in": checked_in,
         "pending": max(0, total - checked_in),

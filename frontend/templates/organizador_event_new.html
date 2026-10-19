@@ -1,0 +1,43 @@
+{% from "_ui.html" import icon, app_shell with context %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  {% include "_head.html" %}
+  <title>Novo evento · GateFlow</title>
+</head>
+<body>
+{% call app_shell('Novo evento', active='events', back=url_for('page_organizador_events')) %}
+  <div class="app-narrow">
+    <div class="page-intro">
+      <h2>Criar evento</h2>
+      <p>Só precisa do essencial. Os convidados adiciona a seguir.</p>
+    </div>
+    <form id="form-new-event" class="form-card" novalidate>
+      <label for="event-name">Nome do evento *</label>
+      <input type="text" id="event-name" required maxlength="150" autocomplete="off" placeholder="Ex: Casamento Ana & Carlos" data-autofocus />
+
+      <label for="event-date">Data e hora *</label>
+      <input type="datetime-local" id="event-date" required />
+
+      <label for="event-location">Local *</label>
+      <input type="text" id="event-location" required maxlength="250" autocomplete="off" placeholder="Ex: Salão Real, Beira" />
+
+      <label for="event-organizer-name">Organizador / empresa *</label>
+      <input type="text" id="event-organizer-name" required maxlength="150" autocomplete="organization" value="{{ current_user.full_name or '' }}" placeholder="Ex: Buffet Real Eventos" />
+
+      <label for="event-description">Descrição <span class="text-muted">(opcional)</span></label>
+      <textarea id="event-description" maxlength="2000" placeholder="Código de vestuário, notas para os convidados…"></textarea>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg" id="btn-save-event">{{ icon('check') }} Criar evento</button>
+        <a href="{{ url_for('page_organizador_events') }}" class="btn btn-ghost btn-lg" data-back>Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endcall %}
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/organizador_event_new.js') }}"></script>
+</body>
+</html>

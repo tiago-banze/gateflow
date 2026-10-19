@@ -156,3 +156,19 @@ Vale a pena ler antes de colocar o sistema em uso real:
    tablets dos porteiros acessarem via HTTPS num IP local) -- na
    Vercel, o HTTPS já é gerenciado automaticamente pela plataforma, essa
    parte do código simplesmente não é executada em produção.
+
+
+## Variáveis de ambiente (resumo atual)
+Obrigatórias: `DATABASE_URL` (Neon), `SECRET_KEY`, `GATEFLOW_PUBLIC_BASE_URL`,
+e no 1.º deploy `GATEFLOW_ADMIN_USERNAME` + `GATEFLOW_ADMIN_PASSWORD`
+(mín. 10 caracteres; não há senha por defeito). Depois do admin existir podes
+remover a senha das variáveis.
+
+Envio de mensagens: ver a tabela de canais no `README.md`. Sem credenciais os
+envios ficam "não enviados" com o motivo. Os envios em massa correm em lotes
+de 12 para respeitar o limite de tempo das funções serverless; a interface
+repete até concluir.
+
+Notas: este projeto não vende bilhetes nem usa M-Pesa. Se o repositório já teve
+`key.pem` ou `eventos.db` versionados, **rode/gere novas chaves** e assuma-os
+comprometidos.

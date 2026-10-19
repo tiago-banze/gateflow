@@ -13,19 +13,28 @@ _MSISDN_PATTERN = re.compile(r"^258(8[2-7])\d{7}$")
 
 def normalize_msisdn(raw_phone):
     """
-    Normaliza um número de telemóvel moçambicano para o formato
-    258XXXXXXXXX, aceitando os formatos comuns de entrada:
+    Normaliza um número de telemóvel para o formato internacional sem "+"
+    (E.164 sem o sinal), aceitando os formatos comuns de entrada:
       "84 123 4567", "0841234567", "+258841234567", "258841234567"
-    Retorna None se o número não for um MSISDN moçambicano válido (9
-    dígitos após o 258, começando por 82-87 — as faixas atualmente
-    atribuídas pelas operadoras).
+      "+27 82 123 4567" (outros países, desde que com + ou 00 à frente)
+
+    - Números moçambicanos: 9 dígitos começando por 82-87 -> "258XXXXXXXXX".
+    - Números internacionais: só aceites quando vêm com "+" ou "00" (senão
+      é impossível saber o país); 8 a 15 dígitos.
+    Retorna None se o número não for válido.
     """
     if not raw_phone:
         return None
-    digits = re.sub(r"\D", "", raw_phone)
-    if digits.startswith("00258"):
-        digits = digits[5:]
-    elif digits.startswith("258"):
+    raw = raw_phone.strip()
+    has_international_prefix = raw.startswith("+") or raw.startswith("00")
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("00"):
+        digits = digits[2:]
+
+    if has_international_prefix and not digits.startswith("258"):
+        return digits if 8 <= len(digits) <= 15 else None
+
+    if digits.startswith("258"):
         digits = digits[3:]
     elif digits.startswith("0"):
         digits = digits[1:]

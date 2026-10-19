@@ -64,11 +64,6 @@ DEFAULT_TABLE_LABEL = "Não definida"
 # Extensões de arquivo permitidas para upload
 ALLOWED_UPLOAD_EXTENSIONS = {".xlsx"}
 
-# Upload de logo de evento (Módulo B) — validação de formato e tamanho no backend
-ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg"}
-MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024  # 2 MB
-LOGOS_DIR = os.path.join(DATA_DIR, "logos")
-
 # Tamanho máximo de upload aceito (10 MB)
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -94,26 +89,8 @@ SECRET_KEY_PATH = os.path.join(DATA_DIR, "secret.key")
 # Code de funcionar ao acessar o backend pelo IP da rede local.
 CERTS_DIR = os.path.join(DATA_DIR, "certs")
 
-# Chave secreta usada para assinar (HMAC-SHA256) cada bilhete emitido —
-# ESSA chave é diferente da SECRET_KEY de sessão de login. Pode vir de
-# variável de ambiente (recomendado em produção); se não vier, o sistema
-# gera e persiste uma automaticamente na primeira execução (mesmo padrão
-# já usado para a chave de sessão), para funcionar sem configuração
-# manual em desenvolvimento/testes.
-TICKET_SECRET_ENV_VAR = "GATEFLOW_TICKET_SECRET"
-TICKET_SECRET_PATH = os.path.join(DATA_DIR, "ticket_secret.key")
-
 # Duração da sessão de login (em minutos) por inatividade.
 SESSION_LIFETIME_MINUTES = 480  # 8 horas — cobre um turno de trabalho
-
-# Credenciais do usuário administrador criado automaticamente na primeira
-# execução, caso ainda não exista nenhum usuário no banco. DEVEM ser
-# alteradas imediatamente após o primeiro login (ver README).
-DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "TrocarSenha@123"
-DEFAULT_PORTEIRO_USERNAME = "porteiro"
-DEFAULT_PORTEIRO_PASSWORD = "TrocarSenha@123"
-
 
 # --- Convites / RSVP ---
 
@@ -132,7 +109,7 @@ MAX_PORTEIROS_POR_ORGANIZADOR = int(os.environ.get("MAX_PORTEIROS_POR_ORGANIZADO
 
 def ensure_directories():
     """Garante que todos os diretórios necessários existam antes de subir o app."""
-    for directory in (DATA_DIR, QRCODES_DIR, EXPORTS_DIR, UPLOADS_DIR, CERTS_DIR, LOGOS_DIR):
+    for directory in (DATA_DIR, QRCODES_DIR, EXPORTS_DIR, UPLOADS_DIR, CERTS_DIR):
         os.makedirs(directory, exist_ok=True)
 
 

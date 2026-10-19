@@ -6,25 +6,31 @@ Mantido separado do database.py porque é lógica de apresentação, não de
 persistência — o "hoje" muda a cada chamada, não faz sentido guardá-lo.
 """
 
-from datetime import date, datetime
+import os
+from datetime import datetime, timedelta
+
+# Fuso horário do negócio (Moçambique = UTC+2). Em servidores serverless o relógio
+# é UTC, o que antecipava/atrasava o 'hoje' em 2 horas. Configurável.
+TZ_OFFSET_HOURS = float(os.environ.get("GATEFLOW_TZ_OFFSET_HOURS", "2"))
+
+
+def local_today():
+    return (datetime.utcnow() + timedelta(hours=TZ_OFFSET_HOURS)).date()
 
 STATUS_PROXIMO = "proximo"
 STATUS_ANDAMENTO = "andamento"
 STATUS_ENCERRADO = "encerrado"
-STATUS_ESGOTADO = "esgotado"
 
 STATUS_LABELS = {
     STATUS_PROXIMO: "Evento Próximo",
     STATUS_ANDAMENTO: "Evento em Andamento",
     STATUS_ENCERRADO: "Evento Encerrado",
-    STATUS_ESGOTADO: "Esgotado",
 }
 
 STATUS_CSS_CLASS = {
     STATUS_PROXIMO: "status-proximo",
     STATUS_ANDAMENTO: "status-andamento",
     STATUS_ENCERRADO: "status-encerrado",
-    STATUS_ESGOTADO: "status-esgotado",
 }
 
 
@@ -54,7 +60,7 @@ def compute_event_status(event_date_str, today=None):
     Retorna um dict {code, label, css_class} com o status do evento.
     `today` pode ser injetado (útil em testes); por padrão usa date.today().
     """
-    today = today or date.today()
+    today = today or local_today()
     event_date = _parse_event_date(event_date_str)
 
     if event_date is None or event_date > today:
@@ -81,24 +87,6 @@ def attach_status(events):
 def is_past(event_date_str, today=None):
     """Atalho: True se a data do evento já passou (não é hoje nem futuro)."""
     return compute_event_status(event_date_str, today=today)["code"] == STATUS_ENCERRADO
-
-
-def apply_sold_out_override(status, stock):
-    """
-    Sobrepõe o status calculado por data para 'Esgotado' quando o
-    estoque de um evento do Módulo B zerou nos dois setores — MAS só se
-    o evento ainda não estiver Encerrado (data passada continua tendo
-    prioridade visual sobre esgotado, faz mais sentido operacionalmente).
-    """
-    if status["code"] == STATUS_ENCERRADO:
-        return status
-    if stock and stock.get("sold_out"):
-        return {
-            "code": STATUS_ESGOTADO,
-            "label": STATUS_LABELS[STATUS_ESGOTADO],
-            "css_class": STATUS_CSS_CLASS[STATUS_ESGOTADO],
-        }
-    return status
 
 
 def sort_events_for_display(events):

@@ -1,0 +1,45 @@
+{% from "_ui.html" import icon, app_shell with context %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  {% include "_head.html" %}
+  <title>Porteiros · GateFlow</title>
+</head>
+<body data-max-porteiros="{{ max_porteiros }}">
+{% call app_shell('Porteiros', active='porteiros') %}
+  <div class="page-intro">
+    <h2>Porteiros</h2>
+    <p>Até {{ max_porteiros }} contas para validar a entrada (QR Code) nos <strong>seus</strong> eventos. Só veem os seus eventos.</p>
+  </div>
+
+  <div id="porteiros-list" class="list-card" aria-live="polite">
+    <div class="empty-state">A carregar…</div>
+  </div>
+
+  <button type="button" class="fab" id="btn-open-porteiro" data-sheet-open="porteiro-sheet">{{ icon('user-plus') }} Adicionar</button>
+
+  <div class="modal-overlay hidden" id="porteiro-sheet" role="dialog" aria-modal="true" aria-labelledby="porteiro-sheet-title" data-sheet>
+    <div class="modal-box">
+      <div class="sheet-head"><h3 id="porteiro-sheet-title">Novo porteiro</h3><button class="icon-btn" type="button" data-sheet-close aria-label="Fechar">{{ icon('x') }}</button></div>
+      <form id="form-new-porteiro" novalidate>
+        <label for="porteiro-full-name">Nome completo</label>
+        <input type="text" id="porteiro-full-name" autocomplete="off" placeholder="Ex: João Massinga" data-autofocus />
+        <label for="porteiro-username">Utilizador (para entrar) *</label>
+        <input type="text" id="porteiro-username" required autocomplete="off" autocapitalize="none" placeholder="Ex: joao.porteiro" />
+        <label for="porteiro-password">Senha provisória *</label>
+        <input type="password" id="porteiro-password" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
+        <p class="field-hint">Entregue ao porteiro o utilizador e a senha. Ele entra em <strong>/login</strong>.</p>
+        <div class="sheet-footer">
+          <button type="button" class="btn btn-ghost" data-sheet-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-porteiro">{{ icon('check') }} Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endcall %}
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/organizador_porteiros.js') }}"></script>
+</body>
+</html>

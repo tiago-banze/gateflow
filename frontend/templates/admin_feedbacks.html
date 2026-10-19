@@ -1,4 +1,4 @@
-{% from "_ui.html" import icon, topbar with context %}
+{% from "_ui.html" import icon, app_shell with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,29 +6,13 @@
   <title>GateFlow - Depoimentos</title>
 </head>
 <body>
-  {% call topbar('Painel Administrativo') %}
-    <a href="/checkin" class="nav-link" title="Portaria">{{ icon('scan') }}<span class="nav-label">Portaria</span></a>
-  {% endcall %}
-
-  <div class="container" role="main" id="main-content">
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <a href="{{ url_for('page_index') }}">Início</a>
-      <span class="crumb-sep">/</span>
-      <a href="{{ url_for('page_admin') }}">Eventos</a>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">Depoimentos</span>
-    </nav>
+{% call app_shell('Depoimentos', active='feedbacks') %}
     <div class="page-header">
       <div>
         <h1 class="page-title">Depoimentos</h1>
         <p class="page-sub">Modere o que aparece na página inicial. Só depois de aprovado é que fica público.</p>
       </div>
     </div>
-    <nav class="nav-tabs" aria-label="Secções do painel">
-      <a href="{{ url_for('page_admin') }}">{{ icon('calendar') }} Eventos</a>
-      <a href="{{ url_for('page_admin_users') }}">{{ icon('users') }} Usuários</a>
-      <a href="{{ url_for('page_admin_feedbacks') }}" class="active" aria-current="page">{{ icon('message') }} Depoimentos</a>
-    </nav>
 
     <div class="card">
       <div class="card-head"><h2>Pendentes de moderação</h2></div>
@@ -36,9 +20,8 @@
         <p class="empty-state">A carregar…</p>
       </div>
     </div>
-  </div>
+{% endcall %}
 
-  {% include "_footer.html" %}
   {% if initial_pending_feedbacks is not none %}
   <script>
     // Fila de moderação já pronta do servidor (SSR).
@@ -46,6 +29,7 @@
   </script>
   {% endif %}
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/admin_feedbacks.js') }}"></script>
 </body>
 </html>

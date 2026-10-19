@@ -1,4 +1,4 @@
-{% from "_ui.html" import icon, topbar with context %}
+{% from "_ui.html" import icon, app_shell with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,18 +8,7 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 </head>
 <body data-event-id="{{ event.id }}" data-event-status="{{ event.status.code }}">
-  {% call topbar('Portaria') %}
-    <a href="{{ url_for('page_checkin') }}" class="nav-link" title="Todos os eventos">{{ icon('arrow-left') }}<span class="nav-label">Eventos</span></a>
-  {% endcall %}
-
-  <div class="container container-has-fab" role="main" id="main-content">
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <a href="{{ url_for('page_index') }}">Início</a>
-      <span class="crumb-sep">/</span>
-      <a href="{{ url_for('page_checkin') }}">Portaria</a>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">{{ event.name }}</span>
-    </nav>
+{% call app_shell('Check-in', active='checkin', back=url_for('page_checkin'), back_label='Eventos') %}
 
     <div class="page-header">
       <div>
@@ -76,9 +65,8 @@
     <!-- Telas pequenas: cartões otimizados para toque -->
     <div id="guests-container" class="guest-grid mobile-only"></div>
     <div id="guests-empty" class="empty-state hidden">Nenhum convidado encontrado.</div>
-  </div>
+{% endcall %}
 
-  {% include "_footer.html" %}
 
   <!-- Botão flutuante de scanner (escondido se o evento já encerrou) -->
   <button class="scan-fab {{ 'hidden' if event.status.code == 'encerrado' else '' }}" id="btn-open-scanner" type="button" title="Ler QR Code">{{ icon('scan') }}<span>Ler QR Code</span></button>
@@ -98,6 +86,7 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offline_checkin.js') }}"></script>
   <script src="{{ url_for('static', filename='js/checkin.js') }}"></script>
 </body>

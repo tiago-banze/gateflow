@@ -49,7 +49,6 @@ const GF_ICONS = {
   "menu": "<path d=\"M4 12h16\"/><path d=\"M4 6h16\"/><path d=\"M4 18h16\"/>",
   "alert": "<path d=\"M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/>",
   "frown": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M16 16s-1.5-2-4-2-4 2-4 2\"/><path d=\"M9 9h.01\"/><path d=\"M15 9h.01\"/>",
-  "credit-card": "<rect x=\"2\" y=\"5\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M2 10h20\"/>",
   "grid": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/>",
   "hourglass": "<path d=\"M5 22h14\"/><path d=\"M5 2h14\"/><path d=\"M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22\"/><path d=\"M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2\"/>",
   "heart": "<path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\"/>",
@@ -62,6 +61,12 @@ const GF_ICONS = {
   "quote": "<path d=\"M3 21c3 0 7-1 7-8V5c0-1.25-.76-2-2-2H4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4\"/><path d=\"M15 21c3 0 7-1 7-8V5c0-1.25-.76-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4\"/>",
   "sparkles": "<path d=\"m12 3-1.9 5.8a2 2 0 0 1-1.29 1.29L3 12l5.8 1.9a2 2 0 0 1 1.29 1.29L12 21l1.9-5.8a2 2 0 0 1 1.29-1.29L21 12l-5.8-1.9a2 2 0 0 1-1.29-1.29Z\"/>",
   "home": "<path d=\"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><path d=\"M9 22V12h6v10\"/>",
+  "arrow-up": "<path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/>",
+  "more-vertical": "<circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"12\" cy=\"19\" r=\"1\"/>",
+  "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>",
+  "phone": "<path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\"/>",
+  "chevron-left": "<path d=\"m15 18-6-6 6-6\"/>",
+  "external-link": "<path d=\"M15 3h6v6\"/><path d=\"M10 14 21 3\"/><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>",
   "chevron-right": "<path d=\"m9 18 6-6-6-6\"/>",
   "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>",
   "power": "<path d=\"M18.36 6.64a9 9 0 1 1-12.73 0\"/><path d=\"M12 2v10\"/>",
@@ -282,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // cada resize/orientação para acompanhar mudanças de layout.
 // --------------------------------------------------------------------------
 function setTopbarHeightVar() {
- const topbar = document.querySelector(".topbar");
+ const topbar = document.querySelector(".appbar, .topbar");
  if (topbar) {
  document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
  }
@@ -313,7 +318,7 @@ window.addEventListener("orientationchange", setTopbarHeightVar);
 // barra de busca "flutuar" fora do lugar depois que o topo termina de
 // carregar de verdade.
 if (window.ResizeObserver) {
-  const topbarEl = document.querySelector(".topbar");
+  const topbarEl = document.querySelector(".appbar, .topbar");
   if (topbarEl) new ResizeObserver(setTopbarHeightVar).observe(topbarEl);
 
   const miniStickyEl = document.getElementById("event-mini-sticky");
@@ -416,8 +421,8 @@ function _renderNextEventActions(event, mode) {
 
  if (mode === "organizador") {
  box.innerHTML = `
- <a href="/organizador/eventos/${event.id}" class="btn btn-secondary">${icon("edit")} Editar</a>
- <a href="/organizador/eventos/${event.id}" class="btn btn-primary">${icon("scan")} Trabalhar evento (check-in)</a>`;
+ <a href="/organizador/eventos/${event.id}#definicoes" class="btn btn-secondary">${icon("edit")} Editar</a>
+ <a href="/organizador/eventos/${event.id}" class="btn btn-primary">${icon("users")} Gerir convidados</a>`;
  return;
  }
 
@@ -447,4 +452,29 @@ function _setCountdownValues(days, hours, minutes, seconds) {
  document.getElementById("cd-hours").textContent = String(hours).padStart(2, "0");
  document.getElementById("cd-minutes").textContent = String(minutes).padStart(2, "0");
  document.getElementById("cd-seconds").textContent = String(seconds).padStart(2, "0");
+}
+
+
+// --------------------------------------------------------------------------
+// CARTÃO DE EVENTO (listas do organizador)
+// --------------------------------------------------------------------------
+function eventCardHtml(event) {
+  const total = event.total_guests ?? 0;
+  const present = event.total_checked_in ?? 0;
+  return `
+    <a class="event-card" href="/organizador/eventos/${event.id}">
+      <div class="event-card-top">
+        <div class="event-card-name">${escapeHtml(event.name)}</div>
+        <span class="badge ${event.status.css_class}">${escapeHtml(event.status.label.replace("Evento ", ""))}</span>
+      </div>
+      <div class="event-card-meta">
+        <span class="meta-item">${icon("calendar", 15)} ${escapeHtml(formatDateTime(event.event_date))}</span>
+        <span class="meta-item">${icon("map-pin", 15)} ${escapeHtml(event.location || "Local não informado")}</span>
+      </div>
+      <div class="event-card-foot">
+        <span class="badge">${icon("users", 13)} ${total} convidados</span>
+        ${present ? `<span class="badge badge-success">${icon("check", 13)} ${present} presentes</span>` : ""}
+        <span class="chev">${icon("chevron-right", 18)}</span>
+      </div>
+    </a>`;
 }

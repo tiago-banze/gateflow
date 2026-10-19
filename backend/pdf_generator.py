@@ -18,7 +18,6 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 
 import config
-import ticket_security
 
 # Layout da grade: 2 colunas x 4 linhas por página (8 convites por página)
 COLUMNS = 2
@@ -69,8 +68,7 @@ class PDFGenerationError(Exception):
 def _generate_guest_qr_image(guest_id):
     """
     Gera a imagem do QR Code de UM convidado em memória (sem salvar em
-    disco) -- mesmo padrão já usado para bilhetes em
-    `_generate_ticket_qr_image` logo abaixo. Não depender de um arquivo
+    disco). Não depender de um arquivo
     pré-gerado em `guest["qr_code_path"]` é importante em produção
     serverless: esse caminho pode apontar para um /tmp de um cold start
     anterior que já não existe mais, e o PDF de convites acabava sendo
@@ -149,7 +147,7 @@ def _draw_card(c, x, y, card_width, card_height, guest, qr_image_path):
 
 def _wrap_text(c, text, font_name, font_size, max_width):
     """Quebra o texto em múltiplas linhas para caber na largura do cartão."""
-    words = text.split()
+    words = (text or "").split()
     lines = []
     current_line = ""
     for word in words:
@@ -162,7 +160,7 @@ def _wrap_text(c, text, font_name, font_size, max_width):
             current_line = word
     if current_line:
         lines.append(current_line)
-    return lines
+    return lines or [""]
 
 
 def generate_invites_pdf(event, guests):
@@ -340,289 +338,3 @@ def _draw_contingency_header(c, event, page_width, page_height, page_num, page_c
     c.drawRightString(
         page_width - CONTINGENCY_MARGIN, page_height - 8 * mm, f"Página {page_num}/{page_count}"
     )
-
-
-# --------------------------------------------------------------------------
-# FASE 3 — PDF FÍSICO DE BILHETES (grid com marcas de corte)
-# --------------------------------------------------------------------------
-
-TICKET_COLUMNS = 2
-TICKET_ROWS = 4
-TICKET_MARGIN = 12 * mm
-TICKET_SPACING = 6 * mm
-TICKET_VIP_COLOR = colors.HexColor("#B8860B")  # dourado — destaque visual do setor VIP
-TICKET_NORMAL_COLOR = colors.HexColor("#004E92")
-
-
-def _generate_ticket_qr_image(ticket_id, signature):
-    """Gera a imagem do QR Code de UM bilhete em memória (sem salvar em disco)."""
-    payload = ticket_security.build_ticket_qr_payload(ticket_id, signature)
-    qr = qrcode.QRCode(version=None, error_correction=ERROR_CORRECT_M, box_size=10, border=3)
-    qr.add_data(payload)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="#000000", back_color="#FFFFFF")
-
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return buffer
-
-
-def generate_tickets_pdf(event, batch, tickets):
-    """
-    Gera o PDF físico dos bilhetes de um lote: grid 2x4 por página A4,
-    com linhas pontilhadas de guia de corte entre os bilhetes, cada um
-    com Nome do Evento, Organizador, tipo em destaque ([VIP]/[NORMAL]),
-    ID único e QR Code com a assinatura criptográfica anti-fraude.
-    """
-    try:
-        os.makedirs(config.EXPORTS_DIR, exist_ok=True)
-        output_path = os.path.join(config.EXPORTS_DIR, f"{batch['id']}_bilhetes.pdf")
-
-        page_width, page_height = A4
-        header_height = 16 * mm
-        usable_width = page_width - (2 * TICKET_MARGIN)
-        usable_height = page_height - (2 * TICKET_MARGIN) - header_height
-
-        cell_width = (usable_width - (TICKET_SPACING * (TICKET_COLUMNS - 1))) / TICKET_COLUMNS
-        cell_height = (usable_height - (TICKET_SPACING * (TICKET_ROWS - 1))) / TICKET_ROWS
-
-        c = canvas.Canvas(output_path, pagesize=A4)
-
-        per_page = TICKET_COLUMNS * TICKET_ROWS
-        total_tickets = len(tickets)
-        page_count = max(1, -(-total_tickets // per_page))
-
-        ticket_index = 0
-        for page_num in range(page_count):
-            _draw_ticket_page_header(c, event, page_width, page_height, page_num + 1, page_count, total_tickets)
-
-            for row in range(TICKET_ROWS):
-                for col in range(TICKET_COLUMNS):
-                    if ticket_index >= total_tickets:
-                        break
-                    ticket = tickets[ticket_index]
-                    x = TICKET_MARGIN + col * (cell_width + TICKET_SPACING)
-                    y = (
-                        page_height
-                        - TICKET_MARGIN
-                        - header_height
-                        - (row + 1) * cell_height
-                        - row * TICKET_SPACING
-                    )
-                    _draw_ticket_cell(c, x, y, cell_width, cell_height, event, ticket)
-                    ticket_index += 1
-
-            _draw_ticket_crop_marks(c, page_width, page_height, header_height)
-            _draw_signature_footer(c, page_width, TICKET_MARGIN)
-            c.showPage()
-
-        c.save()
-        return output_path
-    except Exception as exc:  # noqa: BLE001
-        raise PDFGenerationError(f"Falha ao gerar PDF de bilhetes: {exc}") from exc
-
-
-def _draw_ticket_page_header(c, event, page_width, page_height, page_num, page_count, total_tickets):
-    c.setFillColor(PRIMARY_COLOR)
-    c.rect(0, page_height - 14 * mm, page_width, 14 * mm, stroke=0, fill=1)
-    logo_path = os.path.join(config.BASE_DIR, "assets", "GateFlow.png")
-    text_x = TICKET_MARGIN
-    if os.path.exists(logo_path):
-        try:
-            logo_h = 9 * mm
-            reader = ImageReader(logo_path)
-            logo_w = reader.getSize()[0] / reader.getSize()[1] * logo_h
-            c.drawImage(reader, TICKET_MARGIN, page_height - 11.5 * mm, width=logo_w, height=logo_h,
-                        preserveAspectRatio=True, mask="auto")
-            text_x = TICKET_MARGIN + logo_w + 3 * mm
-        except Exception:  # noqa: BLE001 - logo ausente/corrompida nunca deve quebrar a emissão do bilhete
-            pass
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(text_x, page_height - 9 * mm, f"BILHETES: {event['name']}")
-    c.setFont("Helvetica", 8)
-    c.drawRightString(
-        page_width - TICKET_MARGIN, page_height - 9 * mm,
-        f"{total_tickets} bilhete(s)  .  Página {page_num}/{page_count}",
-    )
-
-
-def _draw_ticket_cell(c, x, y, width, height, event, ticket):
-    is_vip = ticket["ticket_type"] == "VIP"
-    accent_color = TICKET_VIP_COLOR if is_vip else TICKET_NORMAL_COLOR
-
-    # Borda pontilhada (guia de corte) delimitando CADA bilhete individualmente
-    c.setDash(3, 2)
-    c.setStrokeColor(colors.HexColor("#AAAAAA"))
-    c.setLineWidth(0.75)
-    c.rect(x, y, width, height, stroke=1, fill=0)
-    c.setDash()  # volta para linha sólida nos elementos seguintes
-
-    padding = 4 * mm
-    qr_size = height - (2 * padding)
-
-    ticket_buffer = _generate_ticket_qr_image(ticket["id"], ticket["signature"])
-    qr_image = ImageReader(ticket_buffer)
-    c.drawImage(qr_image, x + padding, y + padding, width=qr_size, height=qr_size, preserveAspectRatio=True)
-
-    text_x = x + padding + qr_size + (4 * mm)
-    text_max_width = width - (text_x - x) - padding
-    text_y = y + height - padding - 10
-
-    # Tipo do bilhete em destaque visual, bem grande e na cor do setor
-    c.setFillColor(accent_color)
-    c.setFont("Helvetica-Bold", 13)
-    c.drawString(text_x, text_y, f"[ {ticket['ticket_type']} ]")
-    text_y -= 16
-
-    # Nome do evento (quebra em até 2 linhas se necessário)
-    c.setFillColor(colors.HexColor("#1F2937"))
-    c.setFont("Helvetica-Bold", 10)
-    for line in _wrap_text(c, event["name"], "Helvetica-Bold", 10, text_max_width)[:2]:
-        c.drawString(text_x, text_y, line)
-        text_y -= 12
-
-    # Nome do Organizador/Empresa
-    c.setFillColor(colors.HexColor("#555555"))
-    c.setFont("Helvetica", 8.5)
-    organizer_name = event.get("organizer_display_name") or ""
-    for line in _wrap_text(c, organizer_name, "Helvetica", 8.5, text_max_width)[:1]:
-        c.drawString(text_x, text_y, line)
-    text_y -= 12
-
-    # ID único do bilhete (curto, só os primeiros 8 caracteres, para caber e ainda ser rastreável)
-    c.setFillColor(colors.HexColor("#999999"))
-    c.setFont("Helvetica", 7)
-    short_id = ticket["id"][:8].upper()
-    c.drawString(text_x, y + padding, f"ID: {short_id}")
-
-
-def _draw_ticket_crop_marks(c, page_width, page_height, header_height):
-    """
-    Desenha marcas de corte (crop marks) nas bordas externas da grade —
-    pequenos traços fora da área impressa, no padrão gráfico usado para
-    guiar o corte físico com tesoura/guilhotina.
-    """
-    mark_length = 3 * mm
-    c.setStrokeColor(colors.HexColor("#888888"))
-    c.setLineWidth(0.5)
-
-    usable_width = page_width - (2 * TICKET_MARGIN)
-    usable_height = page_height - (2 * TICKET_MARGIN) - header_height
-    cell_width = (usable_width - (TICKET_SPACING * (TICKET_COLUMNS - 1))) / TICKET_COLUMNS
-    cell_height = (usable_height - (TICKET_SPACING * (TICKET_ROWS - 1))) / TICKET_ROWS
-
-    # Marcas verticais no topo/base de cada coluna
-    for col in range(TICKET_COLUMNS + 1):
-        x = TICKET_MARGIN + col * (cell_width + TICKET_SPACING)
-        if col == TICKET_COLUMNS:
-            x = TICKET_MARGIN + TICKET_COLUMNS * cell_width + (TICKET_COLUMNS - 1) * TICKET_SPACING
-        c.line(x, page_height - TICKET_MARGIN - header_height + mark_length, x, page_height - TICKET_MARGIN - header_height)
-        c.line(x, TICKET_MARGIN, x, TICKET_MARGIN - mark_length)
-
-
-def _wrap_text(c, text, font_name, font_size, max_width):
-    """Quebra o texto em múltiplas linhas para caber na largura disponível."""
-    words = (text or "").split()
-    lines = []
-    current_line = ""
-    for word in words:
-        candidate = f"{current_line} {word}".strip()
-        if c.stringWidth(candidate, font_name, font_size) <= max_width:
-            current_line = candidate
-        else:
-            if current_line:
-                lines.append(current_line)
-            current_line = word
-    if current_line:
-        lines.append(current_line)
-    return lines or [""]
-
-
-# --------------------------------------------------------------------------
-# FASE 5 - RELATORIO FINANCEIRO (PDF)
-# --------------------------------------------------------------------------
-
-def generate_financial_report_pdf(event, summary, transactions):
-    """Gera o relatorio financeiro em PDF de um evento: resumo (bruto, taxa, liquido) e tabela de transacoes M-Pesa."""
-    try:
-        os.makedirs(config.EXPORTS_DIR, exist_ok=True)
-        output_path = os.path.join(config.EXPORTS_DIR, f"{event['id']}_financeiro.pdf")
-        page_width, page_height = A4
-        margin = 15 * mm
-        c = canvas.Canvas(output_path, pagesize=A4)
-
-        c.setFillColor(PRIMARY_COLOR)
-        c.rect(0, page_height - 20 * mm, page_width, 20 * mm, stroke=0, fill=1)
-        logo_path = os.path.join(config.BASE_DIR, "assets", "GateFlow.png")
-        text_x = margin
-        if os.path.exists(logo_path):
-            try:
-                logo_h = 11 * mm
-                reader = ImageReader(logo_path)
-                logo_w = reader.getSize()[0] / reader.getSize()[1] * logo_h
-                c.drawImage(reader, margin, page_height - 15.5 * mm, width=logo_w, height=logo_h,
-                            preserveAspectRatio=True, mask="auto")
-                text_x = margin + logo_w + 4 * mm
-            except Exception:  # noqa: BLE001
-                pass
-        c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(text_x, page_height - 12 * mm, "Relatorio Financeiro")
-        c.setFont("Helvetica", 9)
-        c.drawString(text_x, page_height - 17 * mm, event["name"])
-
-        y = page_height - 30 * mm
-        c.setFillColor(colors.black)
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(margin, y, "Resumo")
-        y -= 7 * mm
-
-        rows = [
-            ("Receita Bruta (total cobrado dos compradores)", f"{summary['gross_revenue']:.2f} MT"),
-            ("Taxa de Servico GateFlow (5%)", f"{summary['platform_fee']:.2f} MT"),
-            ("Valor Liquido do Organizador", f"{summary['net_organizer']:.2f} MT"),
-            ("Pedidos Pagos", str(summary["paid_orders_count"])),
-            ("Bilhetes Vendidos", str(summary["tickets_sold"])),
-        ]
-        c.setFont("Helvetica", 10)
-        for label, value in rows:
-            c.drawString(margin, y, label)
-            c.drawRightString(page_width - margin, y, value)
-            y -= 6 * mm
-
-        y -= 6 * mm
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(margin, y, "Transacoes M-Pesa")
-        y -= 7 * mm
-
-        col_x = [margin, margin + 32 * mm, margin + 62 * mm, margin + 92 * mm, margin + 122 * mm]
-        headers = ["Pedido", "Comprador", "MSISDN", "Valor", "Estado"]
-        c.setFont("Helvetica-Bold", 8)
-        for header, x in zip(headers, col_x):
-            c.drawString(x, y, header)
-        y -= 4.5 * mm
-        c.line(margin, y, page_width - margin, y)
-        y -= 4 * mm
-
-        c.setFont("Helvetica", 8)
-        for tx in transactions:
-            if y < margin + 10 * mm:
-                c.showPage()
-                y = page_height - margin
-            c.drawString(col_x[0], y, str(tx.get("order_code") or "")[:16])
-            c.drawString(col_x[1], y, str(tx.get("buyer_name") or "")[:18])
-            c.drawString(col_x[2], y, str(tx.get("customer_msisdn") or "-"))
-            c.drawString(col_x[3], y, f"{tx.get('total_amount', 0):.2f} MT")
-            c.drawString(col_x[4], y, str(tx.get("order_status") or ""))
-            y -= 5.5 * mm
-
-        c.setFont("Helvetica-Oblique", 7)
-        c.setFillColor(colors.grey)
-        c.drawString(margin, margin, f"Gerado em {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')} por GateFlow")
-
-        c.save()
-        return output_path
-    except Exception as exc:  # noqa: BLE001
-        raise PDFGenerationError(f"Falha ao gerar relatorio financeiro: {exc}") from exc

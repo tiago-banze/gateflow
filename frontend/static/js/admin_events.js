@@ -55,7 +55,7 @@ async function applyEvents(events, { fade = true } = {}) {
 
  let html;
  if (events.length === 0) {
- html = `<div class="empty-state">Nenhum evento cadastrado ainda. Crie o primeiro evento acima.</div>`;
+ html = `<div class="empty-state">Nenhum evento ainda. Toque em “Novo evento” para criar o primeiro.</div>`;
  } else {
  html = events.map((event) => `
  <div class="event-item">
@@ -125,6 +125,7 @@ async function handleCreateEvent(e) {
 
  showToast("Evento criado com sucesso!", "success");
  document.getElementById("form-new-event").reset();
+ if (typeof closeSheet === "function") closeSheet("new-event-sheet");
  loadEvents();
 }
 

@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
- if (EVENT_MODULE !== "A") return; // Modelo B: elementos de convidados nem existem no HTML (ver Jinja no template)
+
 
  loadGuests("");
  document.getElementById("btn-import").addEventListener("click", handleImportGuests);

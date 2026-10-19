@@ -1,0 +1,35 @@
+{% from "_ui.html" import icon, app_shell with context %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  {% include "_head.html" %}
+  <title>Eventos · GateFlow</title>
+</head>
+<body>
+{% call app_shell('Eventos', active='events') %}
+  <div class="page-intro">
+    <h2>Meus eventos</h2>
+    <p>Toque num evento para gerir convidados e convites.</p>
+  </div>
+
+  <div class="search-bar"><input type="search" id="events-search" placeholder="Procurar evento…" aria-label="Procurar evento" autocomplete="off" /></div>
+  <div class="chip-row" id="events-filters" role="group" aria-label="Filtrar eventos">
+    <button type="button" class="chip" data-filter="proximos" aria-pressed="true">Próximos <span class="chip-count" data-count="proximos"></span></button>
+    <button type="button" class="chip" data-filter="andamento" aria-pressed="false">Hoje <span class="chip-count" data-count="andamento"></span></button>
+    <button type="button" class="chip" data-filter="encerrados" aria-pressed="false">Encerrados <span class="chip-count" data-count="encerrados"></span></button>
+    <button type="button" class="chip" data-filter="todos" aria-pressed="false">Todos <span class="chip-count" data-count="todos"></span></button>
+  </div>
+
+  <div id="events-list" class="event-stack" aria-live="polite">
+    <div class="skeleton-item"><div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div></div>
+    <div class="skeleton-item"><div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div></div>
+  </div>
+
+  <a class="fab" href="{{ url_for('page_organizador_event_new') }}">{{ icon('plus') }} Novo evento</a>
+{% endcall %}
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/organizador_events.js') }}"></script>
+</body>
+</html>

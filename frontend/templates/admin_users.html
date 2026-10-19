@@ -1,4 +1,4 @@
-{% from "_ui.html" import icon, topbar with context %}
+{% from "_ui.html" import icon, app_shell with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,29 +6,13 @@
   <title>GateFlow - Usuários</title>
 </head>
 <body>
-  {% call topbar('Painel Administrativo') %}
-    <a href="/checkin" class="nav-link" title="Portaria">{{ icon('scan') }}<span class="nav-label">Portaria</span></a>
-  {% endcall %}
-
-  <div class="container" role="main" id="main-content">
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <a href="{{ url_for('page_index') }}">Início</a>
-      <span class="crumb-sep">/</span>
-      <a href="{{ url_for('page_admin') }}">Eventos</a>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">Usuários</span>
-    </nav>
+{% call app_shell('Utilizadores', active='users') %}
     <div class="page-header">
       <div>
         <h1 class="page-title">Usuários</h1>
         <p class="page-sub">Gira quem tem acesso ao sistema e com que perfil.</p>
       </div>
     </div>
-    <nav class="nav-tabs" aria-label="Secções do painel">
-      <a href="{{ url_for('page_admin') }}">{{ icon('calendar') }} Eventos</a>
-      <a href="{{ url_for('page_admin_users') }}" class="active" aria-current="page">{{ icon('users') }} Usuários</a>
-      <a href="{{ url_for('page_admin_feedbacks') }}">{{ icon('message') }} Depoimentos</a>
-    </nav>
 
     <div class="grid-2" style="align-items:start;">
       <!-- ==================== NOVO USUÁRIO ==================== -->
@@ -75,10 +59,10 @@
       <div class="card-head"><h2>Usuários cadastrados</h2></div>
       <div id="users-list"></div>
     </div>
-  </div>
+{% endcall %}
 
-  {% include "_footer.html" %}
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/admin_users.js') }}"></script>
 </body>
 </html>

@@ -6,16 +6,15 @@ Uso:
     gunicorn -c gunicorn_config.py app:app
 
 Notas importantes:
-  - O motor de bilheteria usa SQLite em modo WAL com locking atomico
-    (BEGIN IMMEDIATE) para evitar overbooking mesmo com varios workers
+  - O check-in usa SQLite em modo WAL com locking atomico
+    (BEGIN IMMEDIATE) para evitar check-ins duplicados mesmo com varios workers
     concorrentes -- por isso e seguro rodar mais de 1 worker.
   - Se usar Flask-Limiter com storage em memoria (RATELIMIT_STORAGE_URI
     nao configurado), os limites de taxa sao POR WORKER, nao globais --
     em producao com mais de 1 worker, configure um Redis compartilhado
     (ver .env.example) para os limites serem realmente globais.
   - workers = (2 x nucleos) + 1 e a formula recomendada pelo proprio
-    Gunicorn para cargas mistas de I/O (SQLite, chamadas HTTP a M-Pesa,
-    SMTP) como esta aplicacao.
+    Gunicorn para cargas mistas de I/O (SQLite, chamadas HTTP a WhatsApp/SMS/e-mail) como esta aplicacao.
 """
 
 import multiprocessing
@@ -26,7 +25,7 @@ workers = int(os.environ.get("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2
 worker_class = "sync"
 threads = int(os.environ.get("GUNICORN_THREADS", "2"))
 
-timeout = int(os.environ.get("GUNICORN_TIMEOUT", "60"))  # o USSD Push M-Pesa pode demorar
+timeout = int(os.environ.get("GUNICORN_TIMEOUT", "60"))  # envios de mensagens podem demorar
 graceful_timeout = 30
 keepalive = 5
 

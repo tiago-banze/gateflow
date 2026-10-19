@@ -1,116 +1,60 @@
-{% from "_ui.html" import icon, topbar with context %}
+{% from "_ui.html" import icon, app_shell with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   {% include "_head.html" %}
-  <title>GateFlow - Painel do Organizador</title>
+  <title>Início · GateFlow</title>
 </head>
 <body>
-  {% call topbar('Painel do Organizador') %}{% endcall %}
-
-  <div class="container" role="main" id="main-content">
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <a href="{{ url_for('page_index') }}">Início</a>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">Painel do Organizador</span>
-    </nav>
-
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Olá, {{ (current_user.full_name or current_user.username).split(' ')[0] }}</h1>
-        <p class="page-sub">Os eventos com a borda verde são <strong>seus</strong>. Os restantes aparecem para conhecer a plataforma, mas só quem os criou os pode gerir.</p>
-      </div>
-    </div>
-
-    <div id="next-event-card" class="next-event-card hidden">
-      <div class="next-event-label">Próximo evento (seu)</div>
-      <div class="next-event-name" id="next-event-name"></div>
-      <div class="next-event-meta" id="next-event-meta"></div>
-      <div class="countdown-grid" id="next-event-countdown">
-        <div class="countdown-unit"><div class="countdown-value" id="cd-days">--</div><div class="countdown-label">Dias</div></div>
-        <div class="countdown-unit"><div class="countdown-value" id="cd-hours">--</div><div class="countdown-label">Horas</div></div>
-        <div class="countdown-unit"><div class="countdown-value" id="cd-minutes">--</div><div class="countdown-label">Min</div></div>
-        <div class="countdown-unit"><div class="countdown-value" id="cd-seconds">--</div><div class="countdown-label">Seg</div></div>
-      </div>
-      <div class="next-event-actions" id="next-event-actions"></div>
-    </div>
-
-    <!-- ==================== NOVO EVENTO ==================== -->
-    <div class="card">
-      <div class="card-head"><h2>Criar novo evento</h2></div>
-      <form id="form-new-event">
-        <div class="grid-2 form-grid">
-          <div>
-            <label for="event-name">Nome do evento *</label>
-            <input type="text" id="event-name" required placeholder="Ex: Casamento Ana & Carlos" />
-          </div>
-          <div>
-            <label for="event-organizer-name">Organizador / empresa *</label>
-            <input type="text" id="event-organizer-name" required placeholder="Ex: Buffet Real Eventos" />
-          </div>
-          <div>
-            <label for="event-location">Localização / espaço *</label>
-            <input type="text" id="event-location" required placeholder="Ex: Salão Real, Beira" />
-          </div>
-          <div>
-            <label for="event-date">Data e hora *</label>
-            <input type="datetime-local" id="event-date" required />
-          </div>
-          <div style="grid-column:1/-1;">
-            <label for="event-description">Descrição</label>
-            <textarea id="event-description" placeholder="Detalhes adicionais (opcional)"></textarea>
-          </div>
-        </div>
-        <div class="form-row-inline">
-          <button type="submit" class="btn btn-primary" id="btn-save-event">{{ icon('plus') }} Criar evento</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- ==================== MEUS PORTEIROS (máx. 3) ==================== -->
-    <div class="card">
-      <div class="card-head"><h2>Meus porteiros</h2></div>
-      <p class="card-desc">
-        Crie até {{ max_porteiros }} contas de porteiro para validarem bilhetes nos SEUS eventos.
-        Eles não têm acesso aos eventos de outros promotores.
-      </p>
-
-      <form id="form-new-porteiro">
-        <div class="grid-2 form-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
-          <div>
-            <label for="porteiro-full-name">Nome completo</label>
-            <input type="text" id="porteiro-full-name" placeholder="Ex: João Massinga" />
-          </div>
-          <div>
-            <label for="porteiro-username">Usuário (login)</label>
-            <input type="text" id="porteiro-username" required placeholder="Ex: joao.porteiro" />
-          </div>
-          <div>
-            <label for="porteiro-password">Senha provisória</label>
-            <input type="password" id="porteiro-password" required minlength="8" placeholder="Mín. 8 caracteres" />
-          </div>
-        </div>
-        <div class="form-row-inline">
-          <button type="submit" class="btn btn-secondary" id="btn-save-porteiro">{{ icon('user-plus') }} Adicionar porteiro</button>
-        </div>
-      </form>
-
-      <div id="porteiros-list" class="event-list" style="margin-top:20px;">
-        <div class="empty-state">A carregar porteiros…</div>
-      </div>
-    </div>
-
-    <!-- ==================== TODOS OS EVENTOS DA PLATAFORMA ==================== -->
-    <div class="card">
-      <div class="card-head"><h2>Eventos na plataforma</h2></div>
-      <div id="events-list" class="event-list">
-        <div class="empty-state">A carregar eventos…</div>
-      </div>
-    </div>
+{% call app_shell('Início', active='home') %}
+  <div class="greeting">
+    <h2>Olá, {{ (current_user.full_name or current_user.username).split(' ')[0] }}</h2>
+    <p>Gira os seus eventos e convidados num só lugar.</p>
   </div>
 
-  {% include "_footer.html" %}
+  <div id="next-event-card" class="next-event-card hidden">
+    <div class="next-event-label">Próximo evento</div>
+    <div class="next-event-name" id="next-event-name"></div>
+    <div class="next-event-meta" id="next-event-meta"></div>
+    <div class="countdown-grid" id="next-event-countdown">
+      <div class="countdown-unit"><div class="countdown-value" id="cd-days">--</div><div class="countdown-label">Dias</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-hours">--</div><div class="countdown-label">Horas</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-minutes">--</div><div class="countdown-label">Min</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-seconds">--</div><div class="countdown-label">Seg</div></div>
+    </div>
+    <div class="next-event-actions" id="next-event-actions"></div>
+  </div>
+
+  <div class="action-grid">
+    <a class="action-tile is-primary" href="{{ url_for('page_organizador_event_new') }}">
+      <span class="action-tile-icon">{{ icon('plus', 22) }}</span>
+      <span><strong>Novo evento</strong><small>Crie e convide em minutos</small></span>
+    </a>
+    <a class="action-tile" href="{{ url_for('page_organizador_events') }}">
+      <span class="action-tile-icon">{{ icon('calendar', 22) }}</span>
+      <span><strong>Meus eventos</strong><small id="tile-events-sub">A carregar…</small></span>
+    </a>
+    <a class="action-tile" href="{{ url_for('page_organizador_porteiros') }}">
+      <span class="action-tile-icon">{{ icon('users', 22) }}</span>
+      <span><strong>Porteiros</strong><small>Quem valida a entrada</small></span>
+    </a>
+    <a class="action-tile" href="{{ url_for('page_organizador_events') }}#proximos" id="tile-guests-link">
+      <span class="action-tile-icon">{{ icon('user-plus', 22) }}</span>
+      <span><strong>Convidados</strong><small id="tile-guests-sub">A carregar…</small></span>
+    </a>
+  </div>
+
+  <div class="section-title">
+    <h2>Eventos recentes</h2>
+    <a href="{{ url_for('page_organizador_events') }}">Ver todos {{ icon('chevron-right', 16) }}</a>
+  </div>
+  <div id="recent-events" class="event-stack" aria-live="polite">
+    <div class="skeleton-item"><div><div class="skeleton-line skeleton-line--title"></div><div class="skeleton-line skeleton-line--meta"></div></div></div>
+  </div>
+{% endcall %}
+
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/organizador_dashboard.js') }}"></script>
 </body>
 </html>

@@ -11,29 +11,28 @@ local possam se conectar ao mesmo backend simultaneamente.
 import os
 import re
 import io
-import base64
 import hashlib
+import hmac
 import traceback
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import (
     Flask, request, jsonify, render_template, send_file, send_from_directory, abort,
     session, redirect, url_for,
 )
-from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import openpyxl
 from openpyxl.styles import Font, PatternFill
-from PIL import Image, UnidentifiedImageError
 
 import config
+import bootstrap
 import database as db
 import email_service
 import event_status
-import sms_service
-import whatsapp_service
+import notifications
 from security import login_attempt_tracker
 from text_utils import slugify_filename, normalize_msisdn
 from ssl_utils import ensure_self_signed_cert
@@ -87,8 +86,8 @@ def inject_brand_assets():
 
 
 # --- Fase 5: Rate Limiting (Flask-Limiter) ---
-# Protege rotas publicas de abuso/DoS: checkout, webhook M-Pesa e login sao
-# os alvos mais sensiveis (custam dinheiro/credenciais se abusados). O
+# Protege rotas publicas de abuso/DoS: webhook, RSVP e login sao
+# os alvos mais sensiveis (credenciais/custos de envio se abusados). O
 # armazenamento padrao e em memoria (adequado para 1 processo); em producao
 # com multiplos workers, configurar RATELIMIT_STORAGE_URI para um Redis
 # compartilhado (ver .env.example).
@@ -118,8 +117,42 @@ except ImportError:  # pragma: no cover - so acontece se Flask-Limiter nao estiv
 # os logins não sejam invalidados a cada reinício do servidor.
 app.secret_key = config.get_or_create_secret_key()
 app.permanent_session_lifetime = timedelta(minutes=config.SESSION_LIFETIME_MINUTES)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    # Em produção (HTTPS na Vercel) o cookie só viaja por ligação segura.
+    SESSION_COOKIE_SECURE=config.IS_SERVERLESS,
+)
 
-CORS(app, supports_credentials=True)
+
+@app.before_request
+def reject_cross_site_writes():
+    """
+    Defesa em profundidade contra CSRF: pedidos que alteram dados só são
+    aceites se o cabeçalho Origin (quando presente) for o próprio site.
+    Soma-se ao cookie SameSite=Lax e ao facto de a API não ter CORS aberto.
+    """
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origin = request.headers.get("Origin")
+        if origin and request.path != "/webhooks/whatsapp":
+            allowed_hosts = {request.host}
+            if config.PUBLIC_BASE_URL:
+                allowed_hosts.add(urlparse(config.PUBLIC_BASE_URL).netloc)
+            if urlparse(origin).netloc not in allowed_hosts:
+                return jsonify({"success": False, "error": "Origem do pedido não permitida."}), 403
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
+    if config.IS_SERVERLESS:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    if request.path.startswith(("/api/", "/admin", "/organizador", "/checkin")) or request.path == "/login":
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 # Em serverless (Vercel), este módulo é importado a cada cold start, o
 # que pode significar múltiplas instâncias rodando init_db() quase ao
@@ -135,30 +168,10 @@ except Exception:  # noqa: BLE001 - não deixamos um cold start concorrente derr
     app.logger.exception("Falha ao rodar init_db() neste cold start -- verifique DATABASE_URL/Neon.")
 
 
-def _seed_default_users():
-    """
-    Cria os usuários padrão (admin e porteiro) apenas na primeiríssima
-    execução, quando a tabela de usuários ainda está vazia. NÃO afeta
-    eventos/convidados já existentes. As senhas padrão são exibidas uma
-    única vez no console e DEVEM ser trocadas imediatamente em produção.
-    """
-    if db.count_users() > 0:
-        return
-    admin_hash = generate_password_hash(config.DEFAULT_ADMIN_PASSWORD)
-    porteiro_hash = generate_password_hash(config.DEFAULT_PORTEIRO_PASSWORD)
-    db.create_user(config.DEFAULT_ADMIN_USERNAME, admin_hash, "admin")
-    db.create_user(config.DEFAULT_PORTEIRO_USERNAME, porteiro_hash, "porteiro")
-    print("\n" + "=" * 72)
-    print("!! USUÁRIOS PADRÃO CRIADOS — TROQUE AS SENHAS IMEDIATAMENTE !!")
-    print(f"   Admin      -> usuário: {config.DEFAULT_ADMIN_USERNAME}    senha: {config.DEFAULT_ADMIN_PASSWORD}")
-    print(f"   Porteiro   -> usuário: {config.DEFAULT_PORTEIRO_USERNAME} senha: {config.DEFAULT_PORTEIRO_PASSWORD}")
-    print("=" * 72 + "\n")
-
-
 try:
-    _seed_default_users()
-except Exception:  # noqa: BLE001 - mesmo raciocínio do try/except em torno de db.init_db() acima
-    app.logger.exception("Falha ao semear usuários padrão neste cold start.")
+    bootstrap.seed_initial_admin()
+except Exception:  # noqa: BLE001 - um cold start concorrente não pode derrubar o app
+    app.logger.exception("Falha ao criar o administrador inicial neste cold start.")
 
 
 # --------------------------------------------------------------------------
@@ -346,10 +359,6 @@ def _redirect_url_for_role(role):
         return url_for("page_admin")
     if role == "organizador":
         return url_for("page_organizador_dashboard")
-    if role == "cliente":
-        # Área do Cliente Comprador é uma fase futura (Fase 4 do roteiro);
-        # por ora manda para a landing em vez de uma página inexistente.
-        return url_for("page_index")
     return url_for("page_checkin")  # porteiro (padrão)
 
 
@@ -458,12 +467,30 @@ def page_organizador_signup():
 @app.route("/organizador")
 @role_required_page("organizador")
 def page_organizador_dashboard():
-    """
-    Painel do Organizador: criação de eventos (Módulo A/B) e listagem de
-    todos os eventos da plataforma, com isolamento de gerenciamento.
-    """
+    """Início do Organizador: resumo, próximo evento e atalhos."""
+    return render_template("organizador_dashboard.html", current_user=get_current_user())
+
+
+@app.route("/organizador/eventos")
+@role_required_page("organizador")
+def page_organizador_events():
+    """Lista de todos os eventos do Organizador (com filtros)."""
+    return render_template("organizador_events.html", current_user=get_current_user())
+
+
+@app.route("/organizador/eventos/novo")
+@role_required_page("organizador")
+def page_organizador_event_new():
+    """Formulário de criação de evento (página própria, pensada para telemóvel)."""
+    return render_template("organizador_event_new.html", current_user=get_current_user())
+
+
+@app.route("/organizador/porteiros")
+@role_required_page("organizador")
+def page_organizador_porteiros():
+    """Gestão das contas de porteiro do Organizador."""
     return render_template(
-        "organizador_dashboard.html",
+        "organizador_porteiros.html",
         current_user=get_current_user(),
         max_porteiros=config.MAX_PORTEIROS_POR_ORGANIZADOR,
     )
@@ -539,8 +566,6 @@ def admin_download_site_qrcode():
     de uma URL diferente da configurada (ex: testar antes de configurar
     a variável de ambiente definitiva).
     """
-    from generate_site_qr import generate_site_qr
-
     target_url = (request.args.get("url") or config.PUBLIC_BASE_URL or request.host_url).strip()
     if not target_url:
         return jsonify({
@@ -648,190 +673,53 @@ def api_list_events():
 @app.route("/api/organizador/events", methods=["GET"])
 @role_required_api("organizador")
 def api_organizador_list_events():
-    """
-    Fase 2, item 3: agora retorna TODOS os eventos da plataforma (não só
-    os do Organizador autenticado) — "para dar volume à plataforma".
-    Cada evento vem marcado com `is_own` para o frontend desabilitar
-    botões de gerenciamento nos que não pertencem a quem está olhando.
-
-    IMPORTANTE (privacidade): mesmo aparecendo na listagem, eventos de
-    OUTROS organizadores têm `total_guests`/`total_checked_in` ocultados
-    (viram None) — a lista de convidados e o quanto ela já converteu em
-    presença é informação sensível do dono do evento, não precisa vazar
-    para concorrentes só porque o evento aparece na vitrine da plataforma.
-    O isolamento de ACESSO (detalhe, edição, convidados) continua
-    absoluto — isso aqui é só sobre o que aparece nesta listagem.
-    """
+    """Lista os eventos do Organizador autenticado (isolamento multi-tenant feito no SQL)."""
     try:
         current_user = get_current_user()
-        events = db.list_events()
+        events = db.list_events_owned_by(current_user["id"])
         event_status.attach_status(events)
         events = event_status.sort_events_for_display(events)
-
         for event in events:
-            is_own = event.get("organizador_id") == current_user["id"]
-            event["is_own"] = is_own
-            if not is_own:
-                event["total_guests"] = None
-                event["total_checked_in"] = None
-
+            event["is_own"] = True
         return jsonify({"success": True, "data": events})
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
-def _require_module_a_event(event):
-    """
-    Fase 5: segregacao estrita entre Modelo A (lista fechada/convidados) e
-    Modelo B (bilheteira publica). Funcionalidades de convidados (cadastro
-    manual, importacao de planilha, edicao, exclusao) sao EXCLUSIVAS do
-    Modelo A -- um evento do Modelo B nao tem tabela de convidados fazendo
-    sentido nenhum, e expor essas rotas para ele e um vazamento de UI/API
-    entre os dois modelos de negocio. Retorna uma tupla (response, status)
-    pronta para return se o evento nao for Modelo A, ou None se estiver tudo certo.
-    """
-    if event.get("event_module") != "A":
-        return jsonify({
-            "success": False,
-            "error": "Esta funcionalidade e exclusiva de eventos do Modelo A (lista fechada de convidados).",
-        }), 403
-    return None
-
-
-def _validate_module_b_capacity(payload):
-    """
-    Valida a lotação por setores do Módulo B. Retorna (vip, normal, total, error).
-    Regra: se só "total" for informado, VIP vira 0 e Normal vira o total
-    inteiro. Se VIP e Normal forem informados, a soma deve bater EXATAMENTE
-    com o total informado.
-    """
-    def _parse_int(value):
-        if value is None or value == "":
-            return None
-        try:
-            parsed = int(value)
-            return parsed if parsed >= 0 else None
-        except (TypeError, ValueError):
-            return None
-
-    vip = _parse_int(payload.get("capacity_vip"))
-    normal = _parse_int(payload.get("capacity_normal"))
-    total = _parse_int(payload.get("capacity_total"))
-
-    if total is None:
-        return None, None, None, "A lotação total é obrigatória para eventos do Módulo B."
-
-    if vip is None and normal is None:
-        # Só a lotação total foi informada -> tudo vira "Normal"
-        return 0, total, total, None
-
-    vip = vip or 0
-    normal = normal or 0
-    if vip + normal != total:
-        return None, None, None, (
-            f"A soma de Vagas VIP ({vip}) + Vagas Normais ({normal}) = {vip + normal} "
-            f"não bate com a Lotação Total informada ({total})."
-        )
-
-    return vip, normal, total, None
-
-
-def _validate_module_b_prices(payload, capacity_vip, capacity_normal):
-    """
-    Valida os preços de venda ONLINE (Módulo B). Fase 5: a definição de
-    preço por setor passa a ser OBRIGATÓRIA para qualquer setor que
-    tenha vagas (capacity > 0) antes do evento poder ser publicado -- um
-    evento do Modelo B sem preço configurado não tem como vender bilhete
-    nenhum, então a plataforma não permite esse estado inconsistente
-    nem por engano do organizador.
-    Retorna (price_vip, price_normal, error).
-    """
-    def _parse_price(value):
-        if value is None or value == "":
-            return None
-        try:
-            parsed = float(value)
-            return parsed if parsed >= 0 else None
-        except (TypeError, ValueError):
-            return None
-
-    price_vip_raw = payload.get("price_vip")
-    price_normal_raw = payload.get("price_normal")
-
-    price_vip = _parse_price(price_vip_raw) if price_vip_raw not in (None, "") else 0
-    price_normal = _parse_price(price_normal_raw) if price_normal_raw not in (None, "") else 0
-
-    if price_vip is None:
-        return None, None, "Preço VIP inválido."
-    if price_normal is None:
-        return None, None, "Preço Normal inválido."
-
-    if (capacity_vip or 0) > 0 and price_vip <= 0:
-        return None, None, "Defina o preço do ingresso VIP (maior que 0) antes de publicar este evento."
-    if (capacity_normal or 0) > 0 and price_normal <= 0:
-        return None, None, "Defina o preço do ingresso Normal (maior que 0) antes de publicar este evento."
-
-    return price_vip, price_normal, None
-
-
 @app.route("/api/organizador/events", methods=["POST"])
 @role_required_api("organizador")
 def api_organizador_create_event():
-    """Criação de evento pelo Organizador — Fase 2, item 1. Suporta Módulo A e B."""
+    """Criação de evento (lista fechada de convidados) pelo Organizador."""
     try:
         current_user = get_current_user()
         payload = request.get_json(force=True, silent=True) or {}
 
-        event_module = (payload.get("event_module") or "").strip().upper()
         name = (payload.get("name") or "").strip()
         organizer_display_name = (payload.get("organizer_display_name") or "").strip()
         location = (payload.get("location") or "").strip()
         event_date = (payload.get("event_date") or "").strip()
         description = (payload.get("description") or "").strip()
 
-        if event_module not in db.VALID_EVENT_MODULES:
-            return jsonify({"success": False, "error": "Selecione o Tipo de Evento (Módulo A ou B)."}), 400
         if not name or not organizer_display_name or not location or not event_date:
             return jsonify({
                 "success": False,
                 "error": "Nome do Evento, Nome do Organizador/Empresa, Localização e Data/Hora são obrigatórios.",
             }), 400
+        if len(name) > 150 or len(organizer_display_name) > 150 or len(location) > 250 or len(description) > 2000:
+            return jsonify({"success": False, "error": "Um dos campos excede o tamanho máximo permitido."}), 400
+        if not _is_valid_iso_datetime(event_date):
+            return jsonify({"success": False, "error": "Data/Hora inválida."}), 400
 
-        if event_module == "A":
-            event = db.create_event_full(
-                current_user["id"], "A", name, organizer_display_name, location, event_date,
-                description=description,
-            )
-        else:
-            contact_phone = (payload.get("contact_phone") or "").strip()
-            if not contact_phone:
-                return jsonify({
-                    "success": False,
-                    "error": "Contato Telefónico/WhatsApp é obrigatório para eventos do Módulo B.",
-                }), 400
-
-            vip, normal, total, capacity_error = _validate_module_b_capacity(payload)
-            if capacity_error:
-                return jsonify({"success": False, "error": capacity_error}), 400
-
-            price_vip, price_normal, price_error = _validate_module_b_prices(payload, vip, normal)
-            if price_error:
-                return jsonify({"success": False, "error": price_error}), 400
-
-            event = db.create_event_full(
-                current_user["id"], "B", name, organizer_display_name, location, event_date,
-                description=description, contact_phone=contact_phone,
-                capacity_vip=vip, capacity_normal=normal, capacity_total=total,
-                price_vip=price_vip, price_normal=price_normal,
-            )
-
+        event = db.create_event_full(
+            current_user["id"], name, organizer_display_name, location, event_date, description=description,
+        )
         event["status"] = event_status.compute_event_status(event.get("event_date"))
         return jsonify({"success": True, "data": event}), 201
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         app.logger.error("Erro inesperado ao criar evento (organizador): %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao criar evento: {exc}"}), 500
+        return jsonify({"success": False, "error": "Erro ao criar o evento. Tente novamente."}), 500
 
 
 @app.route("/api/organizador/events/<event_id>", methods=["GET"])
@@ -877,31 +765,6 @@ def api_organizador_update_event(event_id):
             "description": payload.get("description", None),
         }
 
-        if current_event["event_module"] == "B" and any(
-            k in payload for k in ("capacity_vip", "capacity_normal", "capacity_total")
-        ):
-            vip, normal, total, capacity_error = _validate_module_b_capacity(payload)
-            if capacity_error:
-                return jsonify({"success": False, "error": capacity_error}), 400
-            update_fields.update(capacity_vip=vip, capacity_normal=normal, capacity_total=total)
-
-        if current_event["event_module"] == "B" and any(k in payload for k in ("price_vip", "price_normal")):
-            effective_vip = update_fields.get("capacity_vip", current_event.get("capacity_vip"))
-            effective_normal = update_fields.get("capacity_normal", current_event.get("capacity_normal"))
-            price_payload = {
-                "price_vip": payload.get("price_vip", current_event.get("price_vip")),
-                "price_normal": payload.get("price_normal", current_event.get("price_normal")),
-            }
-            price_vip, price_normal, price_error = _validate_module_b_prices(
-                price_payload, effective_vip, effective_normal
-            )
-            if price_error:
-                return jsonify({"success": False, "error": price_error}), 400
-            update_fields.update(price_vip=price_vip, price_normal=price_normal)
-
-        if "contact_phone" in payload:
-            update_fields["contact_phone"] = (payload.get("contact_phone") or "").strip() or None
-
         event, owned = db.update_event_by_organizador(event_id, current_user["id"], **update_fields)
         if not owned:
             return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
@@ -912,37 +775,32 @@ def api_organizador_update_event(event_id):
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
-def _get_owned_module_a_event(event_id, organizador_id):
+def _get_owned_event(event_id, organizador_id):
     """
-    Helper compartilhado pelas rotas de gestão de convidados do
-    Organizador: confirma posse do evento e que é do Módulo A. Retorna
-    (event, error_response). `error_response` é None quando tudo está
-    OK; caso contrário, já é a tupla (jsonify(...), status_code) pronta
-    para a rota retornar direto.
-
-    Antes havia aqui um paywall (`is_paid`) que liberava o acesso só
-    após confirmação de pagamento do evento — removido junto com todo o
-    módulo de vendas/monetização; a gestão de convidados agora está
-    disponível assim que o evento é criado.
+    Helper compartilhado pelas rotas de gestão de convidados do Organizador:
+    confirma a posse do evento. Retorna (event, error_response);
+    `error_response` é None quando tudo está OK, caso contrário já é a tupla
+    (jsonify(...), status_code) pronta para a rota devolver.
     """
     event = db.get_event(event_id)
     if not event or event.get("organizador_id") != organizador_id:
         return None, (jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404)
-
-    if event.get("event_module") != "A":
-        return None, (jsonify({
-            "success": False,
-            "error": "Gestão de lista de convidados só está disponível para eventos do Módulo A.",
-        }), 400)
-
     return event, None
+
+
+def _is_valid_iso_datetime(value):
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 @app.route("/api/organizador/events/<event_id>/guests", methods=["GET"])
 @role_required_api("organizador")
 def api_organizador_list_guests(event_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     try:
@@ -958,7 +816,7 @@ def api_organizador_list_guests(event_id):
 @role_required_api("organizador")
 def api_organizador_create_guest_manual(event_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     try:
@@ -999,7 +857,7 @@ def api_organizador_create_guest_manual(event_id):
 @role_required_api("organizador")
 def api_organizador_import_guests(event_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
 
@@ -1059,104 +917,6 @@ def api_organizador_import_guests(event_id):
                 os.remove(temp_path)
             except OSError:
                 pass
-
-
-@app.route("/api/organizador/events/<event_id>/logo", methods=["POST"])
-@role_required_api("organizador")
-def api_organizador_upload_logo(event_id):
-    """
-    Upload do logo de um evento (Módulo B, campo opcional). Validação em
-    duas camadas: (1) extensão do arquivo, (2) o arquivo REALMENTE abre
-    como imagem válida via Pillow — protege contra um arquivo malicioso
-    disfarçado com extensão .png/.jpg.
-    """
-    current_user = get_current_user()
-    event = db.get_event(event_id)
-    if not event or event.get("organizador_id") != current_user["id"]:
-        return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
-    if event.get("event_module") != "B":
-        return jsonify({"success": False, "error": "Logo só está disponível para eventos do Módulo B."}), 400
-    if event_status.is_past(event.get("event_date")):
-        return jsonify({"success": False, "error": "Este evento já foi encerrado.", "event_ended": True}), 403
-
-    if "logo" not in request.files:
-        return jsonify({"success": False, "error": "Nenhum arquivo de logo enviado."}), 400
-    file = request.files["logo"]
-    if file.filename == "":
-        return jsonify({"success": False, "error": "Nome de arquivo inválido."}), 400
-
-    filename = secure_filename(file.filename)
-    _, ext = os.path.splitext(filename.lower())
-    if ext not in config.ALLOWED_LOGO_EXTENSIONS:
-        return jsonify({
-            "success": False,
-            "error": f"Formato não permitido. Use: {', '.join(config.ALLOWED_LOGO_EXTENSIONS)}.",
-        }), 400
-
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
-    if file_size > config.MAX_LOGO_SIZE_BYTES:
-        max_mb = config.MAX_LOGO_SIZE_BYTES / (1024 * 1024)
-        return jsonify({"success": False, "error": f"Imagem excede o tamanho máximo permitido ({max_mb:.0f}MB)."}), 400
-
-    try:
-        # Validação REAL do conteúdo: tenta abrir como imagem antes de
-        # aceitar. Se falhar, não é uma imagem de verdade (ou está
-        # corrompida), independente do que a extensão do arquivo diz.
-        image = Image.open(file.stream)
-        image.verify()
-        file.stream.seek(0)
-    except (UnidentifiedImageError, OSError):
-        return jsonify({"success": False, "error": "O arquivo enviado não é uma imagem válida."}), 400
-
-    try:
-        # Guardamos o logo como um "data URL" (base64) dentro da própria
-        # coluna `logo_path` (TEXT) em vez de salvar um arquivo em disco.
-        # Isso é o que torna o logo de fato PERSISTENTE em produção
-        # serverless: um arquivo em disco sobreviveria só até o fim
-        # desta invocação (a Vercel não garante disco compartilhado nem
-        # persistente entre requisições), enquanto o banco (Neon) é a
-        # nossa única fonte de persistência real. Como logos são pequenos
-        # (limite de 2MB, ver config.MAX_LOGO_SIZE_BYTES) o overhead de
-        # ~33% do base64 é insignificante.
-        file.stream.seek(0)
-        raw_bytes = file.stream.read()
-        content_type = Image.MIME.get(image.format, "image/png") if image.format else "image/png"
-        logo_data_url = f"data:{content_type};base64,{base64.b64encode(raw_bytes).decode('ascii')}"
-
-        updated_event, _ = db.update_event_by_organizador(event_id, current_user["id"], logo_path=logo_data_url)
-        return jsonify({"success": True, "data": updated_event}), 201
-    except Exception as exc:  # noqa: BLE001
-        app.logger.error("Erro ao salvar logo: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao salvar o logo: {exc}"}), 500
-
-
-@app.route("/api/events/<event_id>/logo", methods=["GET"])
-def api_get_event_logo(event_id):
-    """Serve a imagem do logo de um evento. Pública (usada na vitrine de eventos)."""
-    event = db.get_event(event_id)
-    logo_value = event.get("logo_path") if event else None
-    if not logo_value:
-        abort(404)
-
-    if logo_value.startswith("data:"):
-        # Formato novo: "data:<content-type>;base64,<...>" guardado direto
-        # no banco (ver api_organizador_upload_logo acima) -- funciona
-        # igual em qualquer ambiente, sem depender de disco.
-        try:
-            header, b64_content = logo_value.split(",", 1)
-            content_type = header.split(";")[0].replace("data:", "") or "image/png"
-            image_bytes = base64.b64decode(b64_content)
-        except (ValueError, base64.binascii.Error):
-            abort(404)
-        return send_file(io.BytesIO(image_bytes), mimetype=content_type)
-
-    # Formato antigo (instalações locais anteriores a esta mudança):
-    # `logo_path` ainda é um caminho de arquivo em disco.
-    if not os.path.exists(logo_value):
-        abort(404)
-    return send_file(logo_value)
 
 
 # ============================================================================
@@ -1375,75 +1135,111 @@ def _build_guest_qr_url(token):
     return f"{base_url}{url_for('rsvp_qrcode', token=token)}"
 
 
-def _dispatch_guest_invite(event, guest):
-    """
-    Envia o convite (com o link pessoal de RSVP) por WhatsApp; se falhar
-    ou não houver telefone, cai para e-mail. Nunca lança -- melhor
-    esforço, como o resto das notificações do sistema.
-    """
+def _guest_contact_label(guest):
+    return guest.get("full_name") or "Convidado"
+
+
+def _prepare_invite(guest):
+    """Gera (na thread principal, com contexto de request) o link pessoal do convite."""
+    return _build_rsvp_url(db.ensure_rsvp_token(guest["id"]))
+
+
+def _prepare_reminder(event, guest):
     token = db.ensure_rsvp_token(guest["id"])
-    rsvp_url = _build_rsvp_url(token)
-
-    sent_ok = False
-    phone = normalize_msisdn(guest.get("phone"))
-    if phone:
-        try:
-            sent_ok, _err = whatsapp_service.send_rsvp_invite_whatsapp(phone, guest["full_name"], event["name"], rsvp_url)
-        except Exception as exc:  # noqa: BLE001
-            app.logger.warning("Falha ao enviar convite WhatsApp para %s: %s", guest["id"], exc)
-        if not sent_ok:
-            try:
-                sms_service.send_rsvp_invite_sms(phone, guest["full_name"], event["name"], rsvp_url)
-            except Exception as exc:  # noqa: BLE001
-                app.logger.warning("Falha ao enviar convite SMS para %s: %s", guest["id"], exc)
-
-    if guest.get("email"):
-        try:
-            email_service.send_rsvp_invite_email(guest["email"], guest["full_name"], event["name"], rsvp_url)
-        except Exception as exc:  # noqa: BLE001
-            app.logger.warning("Falha ao enviar convite por e-mail para %s: %s", guest["id"], exc)
-
-    db.mark_guest_invite_sent(guest["id"])
-
-
-def _dispatch_guest_reminder(event, guest):
-    """Envia o lembrete do dia do evento (horário + localização + QR Code) -- WhatsApp, senão e-mail."""
-    token = db.ensure_rsvp_token(guest["id"])
-    qr_url = _build_guest_qr_url(token)
-
     try:
-        event_dt = datetime.fromisoformat(event["event_date"])
-        date_label = event_dt.strftime("%d/%m/%Y às %H:%M")
+        date_label = datetime.fromisoformat(event["event_date"]).strftime("%d/%m/%Y às %H:%M")
     except (ValueError, TypeError):
         date_label = event.get("event_date", "")
+    return _build_guest_qr_url(token), date_label, event.get("location_maps_url") or ""
 
-    maps_url = event.get("location_maps_url") or ""
 
-    sent_ok = False
-    phone = normalize_msisdn(guest.get("phone"))
-    if phone:
+def _run_notification_batch(event, guests, kind):
+    """
+    Envia `kind` ("invite" | "reminder") a uma lista de convidados em
+    paralelo limitado. Os links são montados na thread principal (precisam
+    do contexto do pedido); as threads só fazem chamadas de rede. O
+    resultado real de cada convidado é gravado no banco.
+    """
+    prepared = {}
+    for guest in guests:
+        prepared[guest["id"]] = _prepare_invite(guest) if kind == "invite" else _prepare_reminder(event, guest)
+
+    def worker(guest):
         try:
-            sent_ok, _err = whatsapp_service.send_rsvp_reminder_whatsapp(
-                phone, guest["full_name"], event["name"], date_label, maps_url, qr_url
-            )
-        except Exception as exc:  # noqa: BLE001
-            app.logger.warning("Falha ao enviar lembrete WhatsApp para %s: %s", guest["id"], exc)
-        if not sent_ok:
-            try:
-                sms_service.send_rsvp_reminder_sms(phone, guest["full_name"], event["name"], date_label, qr_url)
-            except Exception as exc:  # noqa: BLE001
-                app.logger.warning("Falha ao enviar lembrete SMS para %s: %s", guest["id"], exc)
+            if kind == "invite":
+                return notifications.deliver_invite(guest, event["name"], prepared[guest["id"]])
+            qr_url, date_label, maps_url = prepared[guest["id"]]
+            return notifications.deliver_reminder(guest, event["name"], date_label, maps_url, qr_url)
+        except Exception as exc:  # noqa: BLE001 - um convidado com erro não pode travar o lote
+            app.logger.warning("Erro inesperado a notificar %s: %s", guest["id"], exc)
+            return {"delivered": False, "channels": [], "errors": {"interno": str(exc)[:120]}, "error_summary": str(exc)[:120]}
 
-    if guest.get("email"):
-        try:
-            qr_path = guest.get("qr_code_path")
-            if not qr_path or not os.path.exists(qr_path):
-                qr_path = generate_guest_qrcode(event["id"], guest["id"])
-            email_service.send_rsvp_reminder_email(guest["email"], guest["full_name"], event["name"], date_label, maps_url, qr_path)
-        except Exception as exc:  # noqa: BLE001
-            app.logger.warning("Falha ao enviar lembrete por e-mail para %s: %s", guest["id"], exc)
+    results = []
+    for guest, result in notifications.run_batch(guests, worker):
+        db.record_guest_notification(
+            guest["id"], kind, result["delivered"], result["channels"], result.get("error_summary")
+        )
+        results.append((guest, result))
+    return results
 
-    db.mark_guest_reminder_sent(guest["id"])
+
+def _no_channel_response():
+    return jsonify({
+        "success": False,
+        "error": (
+            "Nenhum canal de envio está configurado no servidor (WhatsApp, SMS ou e-mail). "
+            "Defina as variáveis de ambiente indicadas no guia de deploy para ativar o envio."
+        ),
+        "no_channel": True,
+    }), 503
+
+
+def _single_notification_response(event, guest, kind):
+    if not notifications.any_channel_configured():
+        return _no_channel_response()
+    (_, result), = _run_notification_batch(event, [guest], kind)
+    updated = db.get_guest(guest["id"])
+    if not result["delivered"]:
+        return jsonify({
+            "success": False,
+            "error": result.get("error_summary") or "Não foi possível enviar.",
+            "data": updated,
+        }), 502
+    return jsonify({"success": True, "data": updated, "channels": result["channels"]})
+
+
+def _bulk_notification_response(event, kind):
+    """
+    Envio em lote por etapas: cada pedido trata até MAX_BATCH_SIZE convidados
+    e devolve quantos faltam (`remaining`). O cliente repete até acabar,
+    passando em `skip_ids` os que falharam, para não os repetir em ciclo.
+    """
+    if not notifications.any_channel_configured():
+        return _no_channel_response()
+    payload = request.get_json(force=True, silent=True) or {}
+    skip_ids = set(payload.get("skip_ids") or [])
+
+    pending = db.list_guests_pending_invite(event["id"]) if kind == "invite" else db.list_guests_pending_reminder(event["id"])
+    pending = [g for g in pending if g["id"] not in skip_ids]
+    batch = pending[:notifications.MAX_BATCH_SIZE]
+    results = _run_notification_batch(event, batch, kind)
+
+    sent = sum(1 for _, r in results if r["delivered"])
+    failed = [
+        {"id": g["id"], "name": _guest_contact_label(g), "error": r.get("error_summary")}
+        for g, r in results if not r["delivered"]
+    ]
+    return jsonify({"success": True, "data": {
+        "sent": sent, "failed": failed, "remaining": len(pending) - len(batch),
+        "total_pending": len(pending),
+    }})
+
+
+@app.route("/api/organizador/notifications/status", methods=["GET"])
+@role_required_api("organizador", "admin")
+def api_notification_channels_status():
+    """Quais canais de envio (WhatsApp, SMS, e-mail) estão realmente configurados no servidor."""
+    return jsonify({"success": True, "data": notifications.channel_status()})
 
 
 @app.route("/api/organizador/events/<event_id>/guests/<guest_id>/send-invite", methods=["POST"])
@@ -1451,29 +1247,39 @@ def _dispatch_guest_reminder(event, guest):
 @limiter.limit("60 per minute")
 def api_organizador_send_guest_invite(event_id, guest_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
         return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
-    _dispatch_guest_invite(event, guest)
-    return jsonify({"success": True, "data": db.get_guest(guest_id)})
+    return _single_notification_response(event, guest, "invite")
+
+
+@app.route("/api/organizador/events/<event_id>/guests/<guest_id>/rsvp-link", methods=["GET"])
+@role_required_api("organizador")
+def api_organizador_guest_rsvp_link(event_id, guest_id):
+    """Devolve o link pessoal de confirmação (para o organizador copiar e enviar por outra via)."""
+    current_user = get_current_user()
+    event, error = _get_owned_event(event_id, current_user["id"])
+    if error:
+        return error
+    guest = db.get_guest_by_event(event_id, guest_id)
+    if not guest:
+        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+    return jsonify({"success": True, "data": {"url": _prepare_invite(guest)}})
 
 
 @app.route("/api/organizador/events/<event_id>/guests/send-invites", methods=["POST"])
 @role_required_api("organizador")
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")
 def api_organizador_send_invites_bulk(event_id):
-    """Dispara o convite para todos os convidados que ainda não o receberam."""
+    """Envia o convite aos convidados que ainda não o receberam (por etapas)."""
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
-    pending = db.list_guests_pending_invite(event_id)
-    for guest in pending:
-        _dispatch_guest_invite(event, guest)
-    return jsonify({"success": True, "data": {"sent": len(pending)}})
+    return _bulk_notification_response(event, "invite")
 
 
 @app.route("/api/organizador/events/<event_id>/guests/<guest_id>/send-reminder", methods=["POST"])
@@ -1481,7 +1287,7 @@ def api_organizador_send_invites_bulk(event_id):
 @limiter.limit("60 per minute")
 def api_organizador_send_guest_reminder(event_id, guest_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     guest = db.get_guest_by_event(event_id, guest_id)
@@ -1489,30 +1295,26 @@ def api_organizador_send_guest_reminder(event_id, guest_id):
         return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
     if guest["rsvp_status"] != "confirmed":
         return jsonify({"success": False, "error": "Só é possível enviar lembrete a convidados que confirmaram presença."}), 400
-    _dispatch_guest_reminder(event, guest)
-    return jsonify({"success": True, "data": db.get_guest(guest_id)})
+    return _single_notification_response(event, guest, "reminder")
 
 
 @app.route("/api/organizador/events/<event_id>/guests/send-reminders", methods=["POST"])
 @role_required_api("organizador")
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")
 def api_organizador_send_reminders_bulk(event_id):
-    """Dispara o lembrete (QR + horário + mapa) para todos os confirmados que ainda não o receberam."""
+    """Envia o lembrete (QR + horário + mapa) aos confirmados que ainda não o receberam (por etapas)."""
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
-    pending = db.list_guests_pending_reminder(event_id)
-    for guest in pending:
-        _dispatch_guest_reminder(event, guest)
-    return jsonify({"success": True, "data": {"sent": len(pending)}})
+    return _bulk_notification_response(event, "reminder")
 
 
 @app.route("/api/organizador/events/<event_id>/guests/<guest_id>/companions", methods=["PUT"])
 @role_required_api("organizador")
 def api_organizador_set_guest_companions(event_id, guest_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     payload = request.get_json(force=True, silent=True) or {}
@@ -1530,7 +1332,7 @@ def api_organizador_set_guest_companions(event_id, guest_id):
 @role_required_api("organizador")
 def api_organizador_set_rsvp_settings(event_id):
     current_user = get_current_user()
-    event, error = _get_owned_module_a_event(event_id, current_user["id"])
+    event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
     payload = request.get_json(force=True, silent=True) or {}
@@ -1550,7 +1352,7 @@ def api_organizador_rsvp_summary(event_id):
     """Resumo agregado (confirmados/recusados/pendentes/acompanhantes) -- usado pelo dashboard em tempo real (polling)."""
     current_user = get_current_user()
     if current_user["role"] == "organizador":
-        event, error = _get_owned_module_a_event(event_id, current_user["id"])
+        event, error = _get_owned_event(event_id, current_user["id"])
         if error:
             return error
     try:
@@ -1622,17 +1424,33 @@ def api_rsvp_respond(token):
 @limiter.limit("120 per minute")
 def webhook_whatsapp_inbound():
     """
-    Receptor de respostas inbound do WhatsApp ("1" = confirmar, "2" =
-    recusar). Compatível com o formato de callback da WhatsApp Business
-    Cloud API (Meta) -- se o provider configurado em WHATSAPP_PROVIDER
-    for outro, ajuste o parsing do payload abaixo para o formato dele.
+    Receptor de respostas inbound do WhatsApp ("1" = confirmar, "2" = recusar),
+    no formato da WhatsApp Business Cloud API (Meta).
 
-    GET: usado pela Meta para verificar o endpoint na configuração do
-    webhook (responde ao hub.challenge). POST: mensagens recebidas.
+    Segurança: o GET só responde ao desafio da Meta se `hub.verify_token`
+    bater com WHATSAPP_VERIFY_TOKEN; o POST exige assinatura válida
+    (X-Hub-Signature-256, HMAC-SHA256 com WHATSAPP_APP_SECRET). Sem estas
+    variáveis o endpoint fica desativado -- ninguém consegue forjar
+    confirmações de presença.
     """
+    verify_token = os.environ.get("WHATSAPP_VERIFY_TOKEN", "").strip()
+    app_secret = os.environ.get("WHATSAPP_APP_SECRET", "").strip()
+
     if request.method == "GET":
-        challenge = request.args.get("hub.challenge", "")
-        return challenge, 200
+        if (
+            verify_token
+            and request.args.get("hub.mode") == "subscribe"
+            and hmac.compare_digest(request.args.get("hub.verify_token", ""), verify_token)
+        ):
+            return request.args.get("hub.challenge", ""), 200
+        return "Forbidden", 403
+
+    if not app_secret:
+        return jsonify({"success": False, "error": "Webhook não configurado."}), 503
+    received = request.headers.get("X-Hub-Signature-256", "")
+    expected = "sha256=" + hmac.new(app_secret.encode("utf-8"), request.get_data(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(received, expected):
+        return jsonify({"success": False, "error": "Assinatura inválida."}), 403
 
     payload = request.get_json(force=True, silent=True) or {}
     try:
@@ -1735,6 +1553,20 @@ def api_organizador_create_porteiro():
         return jsonify({"success": True, "data": user}), 201
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/organizador/porteiros/<porteiro_id>", methods=["DELETE"])
+@role_required_api("organizador")
+def api_organizador_delete_porteiro(porteiro_id):
+    """Remove um porteiro criado por ESTE organizador."""
+    current_user = get_current_user()
+    try:
+        removed = db.delete_porteiro_of_organizador(porteiro_id, current_user["id"])
+    except db.DatabaseError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+    if not removed:
+        return jsonify({"success": False, "error": "Porteiro não encontrado."}), 404
+    return jsonify({"success": True})
 
 
 @app.route("/api/events/template-xlsx", methods=["GET"])
@@ -1876,9 +1708,6 @@ def api_import_guests(event_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-    guard = _require_module_a_event(event)
-    if guard:
-        return guard
 
     if "file" not in request.files:
         return jsonify({"success": False, "error": "Nenhum arquivo enviado."}), 400
@@ -2039,9 +1868,6 @@ def api_create_guest_manual(event_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-    guard = _require_module_a_event(event)
-    if guard:
-        return guard
 
     try:
         payload = request.get_json(force=True, silent=True) or {}
@@ -2086,9 +1912,6 @@ def api_update_guest(event_id, guest_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-    guard = _require_module_a_event(event)
-    if guard:
-        return guard
 
     try:
         payload = request.get_json(force=True, silent=True) or {}
@@ -2128,9 +1951,6 @@ def api_delete_guest(event_id, guest_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-    guard = _require_module_a_event(event)
-    if guard:
-        return guard
 
     try:
         guest = db.get_guest_by_event(event_id, guest_id)
@@ -2163,9 +1983,6 @@ def api_send_guest_invite_email(event_id, guest_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-    guard = _require_module_a_event(event)
-    if guard:
-        return guard
 
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:

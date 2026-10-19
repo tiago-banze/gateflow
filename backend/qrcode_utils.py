@@ -5,6 +5,7 @@ apenas o UUID único do convidado (não dados pessoais), garantindo que a
 validação no check-in seja feita sempre consultando o banco de dados.
 """
 
+import io
 import os
 
 import qrcode
@@ -52,6 +53,16 @@ def generate_guest_qrcode(event_id, guest_id):
         raise QRCodeGenerationError(
             f"Falha ao gerar QR Code para o convidado {guest_id}: {exc}"
         ) from exc
+
+
+def generate_guest_qrcode_bytes(guest_id):
+    """QR Code do convidado como bytes PNG, em memória (não depende de disco -- seguro em serverless)."""
+    qr = qrcode.QRCode(version=None, error_correction=ERROR_CORRECT_M, box_size=10, border=4)
+    qr.add_data(f"CHECKIN:{guest_id}")
+    qr.make(fit=True)
+    buffer = io.BytesIO()
+    qr.make_image(fill_color="#000000", back_color="#FFFFFF").save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def extract_guest_id_from_payload(raw_value):

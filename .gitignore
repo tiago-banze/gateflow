@@ -13,3 +13,8 @@ __pycache__/
 .vercel
 .vscode/
 .idea/
+# Dados locais e segredos (nunca no Git)
+backend/data/
+*.pem
+*.db
+*.sqlite3

@@ -1,186 +1,221 @@
-{% from "_ui.html" import icon, topbar with context %}
+{% from "_ui.html" import icon, app_shell with context %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   {% include "_head.html" %}
-  <title>GateFlow - {{ event.name }}</title>
+  <title>{{ event.name }} · GateFlow</title>
 </head>
-<body data-event-id="{{ event.id }}" data-event-module="{{ event.event_module }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
-  {% call topbar('Painel do Organizador') %}
-    <a href="{{ url_for('page_organizador_dashboard') }}" class="nav-link" title="Meus eventos">{{ icon('arrow-left') }}<span class="nav-label">Meus eventos</span></a>
-  {% endcall %}
+<body data-event-id="{{ event.id }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
+{% call app_shell(event.name, active='events', back=url_for('page_organizador_events'), back_label='Eventos') %}
 
-  <div class="container" role="main" id="main-content">
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <a href="{{ url_for('page_index') }}">Início</a>
-      <span class="crumb-sep">/</span>
-      <a href="{{ url_for('page_organizador_dashboard') }}">Meus eventos</a>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">{{ event.name }}</span>
-    </nav>
+  {% if event.status.code == 'encerrado' %}
+  <div class="notice is-warning">{{ icon('info') }}<div>Este evento já foi encerrado. A edição está bloqueada; pode apenas consultar os resultados.</div></div>
+  {% endif %}
 
-    <div class="event-mini-sticky" id="event-mini-sticky">
-      <span class="event-mini-name">{{ event.name }}</span>
-      <span class="event-mini-count" id="event-mini-count">—/—</span>
-    </div>
+  <div class="seg-tabs" role="tablist" aria-label="Secções do evento" data-tabs>
+    <button type="button" class="seg-tab" role="tab" data-tab="resumo" aria-selected="true">{{ icon('bar-chart') }} Resumo</button>
+    <button type="button" class="seg-tab" role="tab" data-tab="convidados" aria-selected="false">{{ icon('users') }} Convidados <span class="tab-count" id="tab-count-guests">0</span></button>
+    <button type="button" class="seg-tab" role="tab" data-tab="convites" aria-selected="false">{{ icon('send') }} Convites <span class="tab-count hidden" id="tab-count-invites">0</span></button>
+    <button type="button" class="seg-tab" role="tab" data-tab="definicoes" aria-selected="false">{{ icon('sliders') }} Definições</button>
+  </div>
 
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{{ event.name }}</h1>
-        <div class="page-meta">
-          <span class="badge {{ event.status.css_class }}">{{ event.status.label }}</span>
-          <span class="meta-item">{{ icon('map-pin', 16) }} {{ event.location or "Local não informado" }}</span>
-          <span class="meta-item">{{ icon('calendar', 16) }} <span id="event-date-display">{{ event.event_date }}</span></span>
-        </div>
+  <!-- ============================ RESUMO ============================ -->
+  <section class="tab-panel" data-tab-panel="resumo" role="tabpanel">
+    <div class="event-hero">
+      <span class="badge {{ event.status.css_class }}">{{ event.status.label }}</span>
+      <h2>{{ event.name }}</h2>
+      <div class="hero-meta">
+        <span class="meta-item">{{ icon('calendar', 16) }} <span id="event-date-display">{{ event.event_date }}</span></span>
+        <span class="meta-item">{{ icon('map-pin', 16) }} {{ event.location or "Local não informado" }}{% if event.location_maps_url %} · <a href="{{ event.location_maps_url }}" target="_blank" rel="noopener noreferrer">Ver no mapa</a>{% endif %}</span>
       </div>
     </div>
 
-    <div class="stats-bar" id="detail-stats"></div>
-
-    {% if event.status.code == 'encerrado' %}
-    <div class="event-ended-banner">
-      {{ icon('info') }}
-      <div>Este evento já foi encerrado — edição bloqueada. Esta tela é apenas para consulta.</div>
-    </div>
-    {% endif %}
-
-    {% if event.event_module != 'A' %}
-    <div class="card card-accent-danger">
-      <div class="card-head"><h3>{{ icon('alert') }} Evento do antigo módulo de vendas</h3></div>
-      <p class="card-desc" style="margin-bottom:0;">
-        Este evento foi criado quando o GateFlow ainda vendia bilhetes online. Essa funcionalidade foi descontinuada —
-        este evento não tem mais loja, checkout nem pagamento associado. Para usar a gestão de convidados/RSVP abaixo,
-        crie um novo evento (o formulário atual já cria só eventos por convite).
-      </p>
-    </div>
-    {% endif %}
-
-    <!-- ==================== RESUMO RSVP EM TEMPO REAL ==================== -->
-    <div class="card">
-      <div class="card-head">
-        <h3>Confirmações (RSVP)</h3>
-        <span class="badge badge-success" id="rsvp-live-indicator">{{ icon('refresh') }} Atualiza automaticamente</span>
-      </div>
-      <div class="stats-bar" id="rsvp-summary-bar"></div>
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><span class="kpi-label">Convidados</span><span class="kpi-value" data-kpi="total">–</span></div>
+      <div class="kpi is-success"><span class="kpi-label">Confirmaram</span><span class="kpi-value" data-kpi="confirmed">–</span></div>
+      <div class="kpi is-warning"><span class="kpi-label">Sem resposta</span><span class="kpi-value" data-kpi="pending">–</span></div>
+      <div class="kpi is-danger"><span class="kpi-label">Recusaram</span><span class="kpi-value" data-kpi="declined">–</span></div>
     </div>
 
-    <div class="grid-2" style="align-items:start;">
-      <!-- ==================== CONFIGURAÇÕES DE RSVP ==================== -->
-      <div class="card">
-        <div class="card-head"><h3>Configurações de convite</h3></div>
-        <form id="form-rsvp-settings">
-          <label for="rsvp-deadline-days">Prazo para responder (dias antes do evento)</label>
-          <input type="number" id="rsvp-deadline-days" min="0" placeholder="Ex: 7 (vazio = sem prazo)" value="{{ event.rsvp_deadline_days if event.rsvp_deadline_days is not none else '' }}" />
-
-          <label for="rsvp-maps-url">Link do local (Google Maps / Waze)</label>
-          <input type="text" id="rsvp-maps-url" placeholder="https://maps.google.com/…" value="{{ event.location_maps_url or '' }}" />
-
-          <div class="form-row-inline">
-            <button type="submit" class="btn btn-secondary">{{ icon('check') }} Guardar</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- ==================== DISPARO DE CONVITES E LEMBRETES ==================== -->
-      <div class="card">
-        <div class="card-head"><h3>Convites e lembretes</h3></div>
-        <p class="card-desc">
-          O convite leva o link pessoal de confirmação (WhatsApp, com alternativa por e-mail). O lembrete leva o QR Code de
-          acesso, horário e localização — envie-o só depois de confirmarem presença, idealmente perto da data.
-        </p>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button type="button" class="btn btn-primary" id="btn-send-invites-bulk">{{ icon('mail') }} Enviar convites pendentes</button>
-          <button type="button" class="btn btn-secondary" id="btn-send-reminders-bulk">{{ icon('bell') }} Enviar lembretes aos confirmados</button>
-        </div>
-      </div>
+    <div class="progress-card">
+      <div class="progress-card-top"><span>Respostas recebidas</span><strong id="progress-answered">0%</strong></div>
+      <div class="progress-track" aria-hidden="true"><span class="progress-fill is-ok" id="progress-ok" style="width:0"></span><span class="progress-fill is-no" id="progress-no" style="width:0"></span></div>
+      <div class="progress-legend"><span><i style="background:var(--brand-500)"></i>Confirmaram</span><span><i style="background:var(--color-error)"></i>Recusaram</span><span id="legend-companions"></span></div>
     </div>
 
-    <!-- ==================== GESTÃO DE CONVIDADOS ==================== -->
-    <div class="grid-2" style="margin-top:20px; align-items:start;">
-      <div class="card">
-        <div class="card-head"><h3>Importar convidados (.xlsx)</h3></div>
-        <p class="card-desc">
-          Colunas obrigatórias: <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong>. <strong>Mesa</strong> é opcional.
-        </p>
-        <button class="btn btn-secondary btn-block" id="btn-download-template">{{ icon('download') }} Baixar modelo de planilha (.xlsx)</button>
-        <div class="upload-drop"><input type="file" id="input-xlsx" accept=".xlsx" /></div>
-        <button class="btn btn-primary btn-block" style="margin-top:14px;" id="btn-import">{{ icon('upload') }} Importar lista de convidados</button>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h3>Cadastrar convidado manualmente</h3></div>
-        <form id="form-new-guest">
-          <label for="guest-name">Nome completo *</label>
-          <input type="text" id="guest-name" required placeholder="Ex: João Pedro Machava" />
-          <label for="guest-email">Email</label>
-          <input type="email" id="guest-email" />
-          <div class="grid-2 form-grid">
-            <div>
-              <label for="guest-phone">Telefone</label>
-              <input type="tel" id="guest-phone" placeholder="Ex: 84 123 4567" />
-            </div>
-            <div>
-              <label for="guest-role">Cargo/Tipo</label>
-              <input type="text" id="guest-role" placeholder="Ex: Convidado, VIP…" />
-            </div>
-            <div>
-              <label for="guest-table">Mesa</label>
-              <input type="text" id="guest-table" placeholder="Ex: Mesa 05" />
-            </div>
-            <div>
-              <label for="guest-companions">Acompanhantes permitidos</label>
-              <input type="number" id="guest-companions" min="0" value="0" />
-            </div>
-          </div>
-          <div class="form-row-inline">
-            <button type="submit" class="btn btn-primary" id="btn-save-guest">{{ icon('plus') }} Adicionar convidado</button>
-          </div>
-        </form>
-      </div>
+    <div class="section-title"><h3>Próximos passos</h3></div>
+    <div class="list-card">
+      <button type="button" class="list-row" data-sheet-open="add-guests-sheet"{% if event.status.code == 'encerrado' %} disabled{% endif %}>
+        <span class="list-row-icon">{{ icon('user-plus') }}</span>
+        <span class="list-row-body"><span class="list-row-title">Adicionar convidados</span><span class="list-row-sub">Um a um, cortesia/VIP ou por planilha</span></span>
+        <span class="list-row-end">{{ icon('chevron-right') }}</span>
+      </button>
+      <a class="list-row" href="#convites" data-goto-tab="convites">
+        <span class="list-row-icon is-warning">{{ icon('send') }}</span>
+        <span class="list-row-body"><span class="list-row-title">Enviar convites</span><span class="list-row-sub" id="next-invites-sub">A verificar…</span></span>
+        <span class="list-row-end">{{ icon('chevron-right') }}</span>
+      </a>
+      <a class="list-row" href="#convidados" data-goto-tab="convidados" data-goto-filter="pending">
+        <span class="list-row-icon is-muted">{{ icon('clock') }}</span>
+        <span class="list-row-body"><span class="list-row-title">Ver quem ainda não respondeu</span><span class="list-row-sub" id="next-pending-sub">&nbsp;</span></span>
+        <span class="list-row-end">{{ icon('chevron-right') }}</span>
+      </a>
+      <a class="list-row" href="#definicoes" data-goto-tab="definicoes">
+        <span class="list-row-icon is-muted">{{ icon('sliders') }}</span>
+        <span class="list-row-body"><span class="list-row-title">Prazo de resposta e local no mapa</span><span class="list-row-sub">Defina até quando podem confirmar</span></span>
+        <span class="list-row-end">{{ icon('chevron-right') }}</span>
+      </a>
     </div>
 
-    <div class="card" style="margin-top:20px;">
-      <div class="card-head"><h3>Cortesias / VIP</h3></div>
-      <p class="card-desc">
-        Cota do evento: <strong>{{ event.courtesy_quota if event.courtesy_quota is not none else "sem limite" }}</strong>.
-        Convidados de cortesia recebem o convite com QR Code assinado por e-mail automaticamente.
-      </p>
-      <form id="form-courtesy">
-        <div class="grid-2 form-grid">
-          <div>
-            <label for="courtesy-name">Nome completo *</label>
-            <input type="text" id="courtesy-name" required placeholder="Ex: Maria Chissano" />
-          </div>
-          <div>
-            <label for="courtesy-email">E-mail</label>
-            <input type="email" id="courtesy-email" placeholder="Para envio automático do convite" />
-          </div>
-          <div>
-            <label for="courtesy-phone">Telefone</label>
-            <input type="tel" id="courtesy-phone" placeholder="Ex: 84 123 4567" />
-          </div>
-          <div>
-            <label for="courtesy-table">Mesa</label>
-            <input type="text" id="courtesy-table" placeholder="Opcional" />
-          </div>
-        </div>
-        <div class="form-row-inline">
-          <button type="submit" class="btn btn-primary">{{ icon('ticket') }} Emitir convite de cortesia</button>
-        </div>
+    <div class="section-title"><h3>No dia do evento</h3></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="kpi is-success"><span class="kpi-label">Já entraram</span><span class="kpi-value" data-kpi="checked_in">–</span></div>
+      <div class="kpi"><span class="kpi-label">Ainda por entrar</span><span class="kpi-value" data-kpi="not_in">–</span></div>
+    </div>
+    <p class="field-hint">A entrada é validada pelos seus <a href="{{ url_for('page_organizador_porteiros') }}" style="color:var(--color-primary);font-weight:700">porteiros</a> através do QR Code de cada convidado.</p>
+  </section>
+
+  <!-- ========================== CONVIDADOS ========================== -->
+  <section class="tab-panel" data-tab-panel="convidados" role="tabpanel" hidden>
+    <div class="search-bar"><input type="search" id="detail-search" placeholder="Procurar convidado…" aria-label="Procurar convidado" autocomplete="off" /></div>
+    <div class="chip-row" id="guest-filters" role="group" aria-label="Filtrar convidados">
+      <button type="button" class="chip" data-filter="all" aria-pressed="true">Todos <span class="chip-count" data-count="all"></span></button>
+      <button type="button" class="chip" data-filter="confirmed" aria-pressed="false">Confirmados <span class="chip-count" data-count="confirmed"></span></button>
+      <button type="button" class="chip" data-filter="pending" aria-pressed="false">Sem resposta <span class="chip-count" data-count="pending"></span></button>
+      <button type="button" class="chip" data-filter="declined" aria-pressed="false">Recusaram <span class="chip-count" data-count="declined"></span></button>
+      <button type="button" class="chip" data-filter="present" aria-pressed="false">Presentes <span class="chip-count" data-count="present"></span></button>
+    </div>
+    <div id="detail-guests" class="guest-list" aria-live="polite"></div>
+  </section>
+
+  <!-- ============================ CONVITES ============================ -->
+  <section class="tab-panel" data-tab-panel="convites" role="tabpanel" hidden>
+    <div id="channels-box"></div>
+
+    <div class="send-card">
+      <h3>{{ icon('send', 20) }} Convites</h3>
+      <p id="invites-desc">Cada convidado recebe um link pessoal para confirmar presença e indicar acompanhantes.</p>
+      <button type="button" class="btn btn-primary btn-block" id="btn-send-invites-bulk">{{ icon('send') }} Enviar convites</button>
+      <div class="send-progress" id="progress-invites"><div class="progress-track"><span class="progress-fill is-ok" style="width:0"></span></div><small></small></div>
+      <div class="send-report" id="report-invites"></div>
+    </div>
+
+    <div class="send-card">
+      <h3>{{ icon('bell', 20) }} Lembretes com QR Code</h3>
+      <p id="reminders-desc">Vão só aos que confirmaram: horário, localização e o QR Code de acesso. Envie perto da data.</p>
+      <button type="button" class="btn btn-secondary btn-block" id="btn-send-reminders-bulk">{{ icon('bell') }} Enviar lembretes</button>
+      <div class="send-progress" id="progress-reminders"><div class="progress-track"><span class="progress-fill is-ok" style="width:0"></span></div><small></small></div>
+      <div class="send-report" id="report-reminders"></div>
+    </div>
+
+    <p class="field-hint">Ordem de envio: WhatsApp → SMS (se o WhatsApp falhar) e e-mail em paralelo. Só marcamos como enviado quando um canal confirma.</p>
+  </section>
+
+  <!-- ============================ DEFINIÇÕES ============================ -->
+  <section class="tab-panel" data-tab-panel="definicoes" role="tabpanel" hidden>
+    <div class="app-narrow" style="margin:0">
+      <form id="form-event-edit" class="form-card" novalidate>
+        <h3>Dados do evento</h3>
+        <label for="edit-name">Nome *</label>
+        <input type="text" id="edit-name" required maxlength="150" value="{{ event.name }}" />
+        <label for="edit-date">Data e hora *</label>
+        <input type="datetime-local" id="edit-date" required value="{{ (event.event_date or '')[:16] }}" />
+        <label for="edit-location">Local *</label>
+        <input type="text" id="edit-location" required maxlength="250" value="{{ event.location or '' }}" />
+        <label for="edit-organizer">Organizador / empresa *</label>
+        <input type="text" id="edit-organizer" required maxlength="150" value="{{ event.organizer_display_name or '' }}" />
+        <label for="edit-description">Descrição</label>
+        <textarea id="edit-description" maxlength="2000">{{ event.description or '' }}</textarea>
+        <div class="form-actions"><button type="submit" class="btn btn-primary" id="btn-save-edit">{{ icon('check') }} Guardar alterações</button></div>
+      </form>
+
+      <form id="form-rsvp-settings" class="form-card" style="margin-top:16px" novalidate>
+        <h3>Confirmação de presença</h3>
+        <label for="rsvp-deadline-days">Prazo para responder (dias antes do evento)</label>
+        <input type="number" id="rsvp-deadline-days" min="0" inputmode="numeric" placeholder="Ex: 7 (vazio = sem prazo)" value="{{ event.rsvp_deadline_days if event.rsvp_deadline_days is not none else '' }}" />
+        <label for="rsvp-maps-url">Link do local (Google Maps / Waze)</label>
+        <input type="url" id="rsvp-maps-url" placeholder="https://maps.google.com/…" value="{{ event.location_maps_url or '' }}" />
+        <p class="field-hint">O link do mapa vai nos lembretes aos convidados.</p>
+        <div class="form-actions"><button type="submit" class="btn btn-primary">{{ icon('check') }} Guardar</button></div>
       </form>
     </div>
+  </section>
 
-    <div class="card">
-      <div class="card-head"><h3>Convidados</h3></div>
-      <div class="search-bar">
-        <input type="search" id="detail-search" placeholder="Procurar convidado por nome…" aria-label="Procurar convidado por nome" autocomplete="off" />
+  <button type="button" class="fab" id="fab-add-guest" data-sheet-open="add-guests-sheet"{% if event.status.code == 'encerrado' %} hidden{% endif %}>{{ icon('plus') }} Convidado</button>
+
+  <!-- ====================== FOLHA: ADICIONAR CONVIDADOS ====================== -->
+  <div class="modal-overlay hidden" id="add-guests-sheet" role="dialog" aria-modal="true" aria-labelledby="add-guests-title" data-sheet>
+    <div class="modal-box">
+      <div class="sheet-head"><h3 id="add-guests-title">Adicionar convidados</h3><button class="icon-btn" type="button" data-sheet-close aria-label="Fechar">{{ icon('x') }}</button></div>
+      <div class="seg-inline" role="tablist" id="add-mode-tabs">
+        <button type="button" role="tab" data-mode="manual" aria-selected="true">Um a um</button>
+        <button type="button" role="tab" data-mode="courtesy" aria-selected="false">Cortesia / VIP</button>
+        <button type="button" role="tab" data-mode="import" aria-selected="false">Planilha</button>
       </div>
-      <div id="detail-guests-table"></div>
+
+      <form id="form-new-guest" data-mode-panel="manual" novalidate>
+        <label for="guest-name">Nome completo *</label>
+        <input type="text" id="guest-name" required autocomplete="off" placeholder="Ex: João Pedro Machava" data-autofocus />
+        <label for="guest-phone">Telemóvel <span class="text-muted">(WhatsApp/SMS)</span></label>
+        <input type="tel" id="guest-phone" inputmode="tel" autocomplete="off" placeholder="Ex: 84 123 4567" />
+        <label for="guest-email">E-mail</label>
+        <input type="email" id="guest-email" autocomplete="off" />
+        <div class="grid-2 form-grid" style="margin-top:0">
+          <div><label for="guest-table">Mesa</label><input type="text" id="guest-table" placeholder="Ex: Mesa 5" /></div>
+          <div><label for="guest-companions">Acompanhantes</label><input type="number" id="guest-companions" min="0" inputmode="numeric" value="0" /></div>
+        </div>
+        <label for="guest-role">Tipo <span class="text-muted">(opcional)</span></label>
+        <input type="text" id="guest-role" placeholder="Ex: Família, Amigo, Imprensa…" />
+        <div class="sheet-footer">
+          <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-guest">{{ icon('plus') }} Adicionar</button>
+        </div>
+      </form>
+
+      <form id="form-courtesy" data-mode-panel="courtesy" hidden novalidate>
+        <p class="field-hint" style="margin-top:0">Cota de cortesias: <strong>{{ event.courtesy_quota if event.courtesy_quota is not none else "sem limite" }}</strong>. O convite em PDF com QR Code segue por e-mail se indicar um.</p>
+        <label for="courtesy-name">Nome completo *</label>
+        <input type="text" id="courtesy-name" required autocomplete="off" />
+        <label for="courtesy-email">E-mail</label>
+        <input type="email" id="courtesy-email" autocomplete="off" />
+        <label for="courtesy-phone">Telemóvel</label>
+        <input type="tel" id="courtesy-phone" inputmode="tel" autocomplete="off" />
+        <label for="courtesy-table">Mesa</label>
+        <input type="text" id="courtesy-table" />
+        <div class="sheet-footer">
+          <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
+          <button type="submit" class="btn btn-primary">{{ icon('ticket') }} Emitir convite</button>
+        </div>
+      </form>
+
+      <div data-mode-panel="import" hidden>
+        <p class="field-hint" style="margin-top:0">Colunas: <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong> (Mesa é opcional).</p>
+        <button class="btn btn-secondary btn-block" id="btn-download-template" type="button">{{ icon('download') }} Baixar modelo (.xlsx)</button>
+        <div class="upload-drop"><input type="file" id="input-xlsx" accept=".xlsx" aria-label="Ficheiro .xlsx" /></div>
+        <div class="sheet-footer">
+          <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
+          <button class="btn btn-primary" id="btn-import" type="button">{{ icon('upload') }} Importar</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  {% include "_footer.html" %}
+  <!-- ====================== FOLHA: AÇÕES DO CONVIDADO ====================== -->
+  <div class="modal-overlay hidden" id="guest-actions-sheet" role="dialog" aria-modal="true" aria-labelledby="guest-actions-title" data-sheet>
+    <div class="modal-box">
+      <div class="sheet-head"><h3 id="guest-actions-title">Convidado</h3><button class="icon-btn" type="button" data-sheet-close aria-label="Fechar">{{ icon('x') }}</button></div>
+      <div id="guest-actions-info" class="field-hint" style="margin:-6px 0 12px"></div>
+      <div class="menu-list">
+        <button type="button" class="menu-row" id="act-invite"><span class="menu-row-icon">{{ icon('send') }}</span><span class="menu-row-text"><strong>Enviar convite</strong><small id="act-invite-sub">Link para confirmar presença</small></span></button>
+        <button type="button" class="menu-row" id="act-reminder"><span class="menu-row-icon">{{ icon('bell') }}</span><span class="menu-row-text"><strong>Enviar lembrete com QR Code</strong><small>Só para quem confirmou</small></span></button>
+        <button type="button" class="menu-row" id="act-copy"><span class="menu-row-icon">{{ icon('external-link') }}</span><span class="menu-row-text"><strong>Copiar link de confirmação</strong><small>Para enviar por outra via</small></span></button>
+      </div>
+    </div>
+  </div>
+{% endcall %}
+
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/organizador_event_detail.js') }}"></script>
 </body>
 </html>
