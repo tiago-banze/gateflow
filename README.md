@@ -63,6 +63,11 @@ fórmulas neutralizadas, nada é gravado em disco.
 - "Mesa" é configurável por evento (Mesa, Zona, Sector, Categoria, Sala, Fila); a categoria do
   QR (VIP, Imprensa, Staff…) aparece no bilhete PDF e na leitura.
 
+## Eventos e retenção
+As listas mostram por defeito só os eventos por realizar (5 de cada vez, "Ver mais"); "Encerrados" e
+"Todos" são escolhas explícitas. Eventos encerrados há mais de 365 dias são apagados automaticamente
+(convidados, respostas e QR Codes incluídos). Ajuste com `GATEFLOW_RETENTION_DAYS` (0 desativa).
+
 ## Segurança
 Cookies de sessão HttpOnly/SameSite, verificação de Origin em pedidos de
 escrita, cabeçalhos de segurança, webhook com HMAC, isolamento por

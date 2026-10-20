@@ -35,26 +35,6 @@
 }
 @keyframes gf-drift { to { background-position: 300px 300px; } }
 
-/* Cartões de evento: aba de bilhete (recorte lateral) e fita de cor por estado. */
-.event-item,
-.event-card {
-  position: relative;
-}
-.event-item::after,
-.event-card::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: -7px;
-  width: 14px;
-  height: 14px;
-  margin-top: -7px;
-  border-radius: 50%;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  pointer-events: none;
-}
-
 /* Saudação com acento festivo */
 .greeting h2::after {
   content: "";
@@ -209,3 +189,4 @@ body[data-event-status] .guest-card .checked-label { width: 100%; min-height: 48
   body[data-event-status] .guest-card .checkin-btn,
   body[data-event-status] .guest-card .checked-label { min-height: 44px; margin-top: 6px; }
 }
+.more-btn { margin-top: 12px; }

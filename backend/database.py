@@ -645,6 +645,31 @@ def update_event(event_id, name, location, description, event_date):
     return get_event(event_id)
 
 
+def purge_expired_events(retention_days=365):
+    """
+    Apaga eventos cuja data passou há mais de `retention_days` dias, com os
+    convidados e respostas RSVP (cópia local dos QR Codes e PDFs é removida
+    por quem chama). Devolve a lista de ids apagados.
+    """
+    import event_status
+    cutoff = (datetime.utcnow() + timedelta(hours=event_status.TZ_OFFSET_HOURS)
+              - timedelta(days=int(retention_days))).strftime("%Y-%m-%d")
+    purged = []
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id FROM events WHERE event_date IS NOT NULL AND event_date <> '' "
+            "AND substr(event_date, 1, 10) < ?",
+            (cutoff,),
+        ).fetchall()
+        for row in rows:
+            event_id = _row_to_dict(row)["id"]
+            conn.execute("DELETE FROM rsvp_responses WHERE guest_id IN (SELECT id FROM guests WHERE event_id = ?)", (event_id,))
+            conn.execute("DELETE FROM guests WHERE event_id = ?", (event_id,))
+            conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
+            purged.append(event_id)
+    return purged
+
+
 def delete_event(event_id):
     with get_connection() as conn:
         cursor = conn.execute("DELETE FROM events WHERE id = ?", (event_id,))

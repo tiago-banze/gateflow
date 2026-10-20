@@ -105,58 +105,65 @@ def _event_date_label(event):
 
 
 def _draw_card(c, x, y, card_width, card_height, guest, qr_image_path, event=None):
-    """Cartão de convite/bilhete: evento, data, local, convidado, categoria, grupo, pessoas e QR Code."""
+    """
+    Cartão: QR Code à esquerda; à direita só o que identifica o convidado
+    (nome, grupo, nº de pessoas, categoria). Evento/data/local ficam no
+    cabeçalho da página. Nada ultrapassa a moldura.
+    """
     event = event or {}
+    pad = 4 * mm
     c.setStrokeColor(PRIMARY_COLOR)
     c.setLineWidth(1)
-    c.roundRect(x, y, card_width, card_height, 4 * mm, stroke=1, fill=0)
+    c.roundRect(x, y, card_width, card_height, 3 * mm, stroke=1, fill=0)
 
-    padding = 5 * mm
-    qr_size = card_height - (2 * padding)
+    qr_size = min(card_height - 2 * pad, card_width * 0.46)
+    qr_y = y + (card_height - qr_size) / 2
     try:
-        c.drawImage(ImageReader(_generate_guest_qr_image(guest["id"])), x + padding, y + padding,
+        c.drawImage(ImageReader(_generate_guest_qr_image(guest["id"])), x + pad, qr_y,
                     width=qr_size, height=qr_size, preserveAspectRatio=True)
     except Exception:
         pass  # nunca deixa um QR falhado travar o PDF inteiro
 
-    text_x = x + padding + qr_size + (4 * mm)
-    text_max_width = card_width - (text_x - x) - padding
-    top = y + card_height - padding
+    text_x = x + pad + qr_size + 4 * mm
+    text_w = x + card_width - pad - text_x
+    top = y + card_height - pad
 
+    # Nome (até 3 linhas, reduz a letra se for muito comprido)
+    size = 11
+    lines = _wrap_text(c, guest["full_name"], "Helvetica-Bold", size, text_w)
+    if len(lines) > 3:
+        size = 9
+        lines = _wrap_text(c, guest["full_name"], "Helvetica-Bold", size, text_w)
+    lines = lines[:3]
     c.setFillColor(PRIMARY_COLOR)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(text_x, top - 8, (event.get("name") or "")[:44].upper())
-    c.setFillColor(colors.HexColor("#555555"))
-    c.setFont("Helvetica", 8)
-    meta = " · ".join(p for p in (_event_date_label(event), (event.get("location") or "")) if p)
-    for i, line in enumerate(_wrap_text(c, meta, "Helvetica", 8, text_max_width)[:2]):
-        c.drawString(text_x, top - 19 - i * 9, line)
+    c.setFont("Helvetica-Bold", size)
+    ty = top - size
+    for line in lines:
+        c.drawString(text_x, ty, line)
+        ty -= size + 2
 
-    c.setFillColor(PRIMARY_COLOR)
-    c.setFont("Helvetica-Bold", 12)
-    text_y = top - 46
-    for line in _wrap_text(c, guest["full_name"], "Helvetica-Bold", 12, text_max_width)[:2]:
-        c.drawString(text_x, text_y, line)
-        text_y -= 14
-
+    # Grupo (Mesa/Zona/...) e pessoas
     group_name = event.get("group_label") or "Mesa"
     table_label = guest.get("table_number") or config.DEFAULT_TABLE_LABEL
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(text_x, text_y - 2, f"{group_name}: {table_label}")
-
-    extra = guest.get("companions_allowed") or 0
+    ty -= 3
+    c.setFont("Helvetica-Bold", 9)
+    for line in _wrap_text(c, f"{group_name}: {table_label}", "Helvetica-Bold", 9, text_w)[:2]:
+        c.drawString(text_x, ty, line)
+        ty -= 11
+    extra = int(guest.get("companions_allowed") or 0)
     if extra:
-        c.setFont("Helvetica", 9)
         c.setFillColor(colors.HexColor("#555555"))
-        c.drawString(text_x, text_y - 14, f"Válido para {1 + int(extra)} pessoas")
+        c.setFont("Helvetica", 8)
+        c.drawString(text_x, ty, f"Válido para {1 + extra} pessoas")
 
-    role_text = (guest.get("role") or "Convidado").strip()
+    # Categoria: etiqueta na base da coluna de texto
+    role_text = (guest.get("role") or "Convidado").strip().upper()[:18]
+    c.setFont("Helvetica-Bold", 7.5)
+    badge_w = min(c.stringWidth(role_text, "Helvetica-Bold", 7.5) + 5 * mm, text_w)
     c.setFillColor(colors.HexColor(_CATEGORY_COLORS.get(role_text.lower(), "#555555")))
-    badge_w = min(c.stringWidth(role_text.upper()[:24], "Helvetica-Bold", 8) + 4 * mm, text_max_width)
-    c.roundRect(text_x, y + padding, badge_w, 5 * mm, 2 * mm, stroke=0, fill=1)
+    c.roundRect(text_x, y + pad, badge_w, 4.6 * mm, 1.6 * mm, stroke=0, fill=1)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(text_x + 2 * mm, y + padding + 1.6 * mm, role_text.upper()[:24])
+    c.drawString(text_x + 2.5 * mm, y + pad + 1.4 * mm, role_text)
 
 
 def _wrap_text(c, text, font_name, font_size, max_width):
@@ -238,7 +245,8 @@ def _draw_header(c, event, page_width, page_height, page_num, page_count):
     c.setFont("Helvetica", 9)
     subtitle = event.get("location") or ""
     if event.get("event_date"):
-        subtitle = f"{subtitle}  |  {event['event_date']}" if subtitle else event["event_date"]
+        date_text = _event_date_label(event)
+        subtitle = f"{subtitle}  |  {date_text}" if subtitle else date_text
     c.drawString(MARGIN, page_height - 16.5 * mm, subtitle)
     c.setFont("Helvetica", 8)
     c.drawRightString(

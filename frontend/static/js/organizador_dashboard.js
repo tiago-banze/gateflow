@@ -33,5 +33,6 @@ async function loadDashboard() {
       </div>`;
     return;
   }
-  listEl.innerHTML = events.slice(0, 3).map(eventCardHtml).join("");
+  const view = sortEventsForView(events, events.some(EVENT_FILTERS.proximos) ? "proximos" : "encerrados");
+  listEl.innerHTML = view.slice(0, 3).map(eventCardHtml).join("");
 }

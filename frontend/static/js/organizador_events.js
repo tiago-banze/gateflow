@@ -3,6 +3,7 @@
  */
 let allEvents = [];
 let activeFilter = "proximos";
+let visibleLimit = EVENT_PAGE_SIZE;
 
 const FILTERS = {
   proximos: (e) => e.status.code === "proximo" || e.status.code === "andamento",
@@ -18,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll("#events-filters [data-filter]").forEach((btn) => {
     btn.addEventListener("click", () => setFilter(btn.getAttribute("data-filter")));
   });
-  document.getElementById("events-search").addEventListener("input", render);
+  document.getElementById("events-search").addEventListener("input", () => { visibleLimit = EVENT_PAGE_SIZE; render(); });
 
   const result = await apiRequest("/api/organizador/events");
   const listEl = document.getElementById("events-list");
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function setFilter(name) {
   activeFilter = name;
+  visibleLimit = EVENT_PAGE_SIZE;
   render();
 }
 
@@ -45,8 +47,11 @@ function render() {
     if (countEl) countEl.textContent = allEvents.filter(FILTERS[name]).length;
   });
 
+  const hint = document.querySelector(".retention-hint");
+  if (hint) hint.hidden = activeFilter !== "encerrados" && activeFilter !== "todos";
+
   const term = document.getElementById("events-search").value.trim().toLowerCase();
-  const items = allEvents
+  const items = sortEventsForView(allEvents, activeFilter === "encerrados" ? "encerrados" : activeFilter === "todos" ? "todos" : "proximos")
     .filter(FILTERS[activeFilter])
     .filter((e) => !term || `${e.name} ${e.location || ""}`.toLowerCase().includes(term));
 
@@ -65,5 +70,9 @@ function render() {
     listEl.innerHTML = `<div class="empty-card" style="grid-column:1/-1"><strong>Nada por aqui</strong><p>Nenhum evento corresponde a este filtro.</p></div>`;
     return;
   }
-  listEl.innerHTML = items.map(eventCardHtml).join("");
+  const shown = items.slice(0, visibleLimit);
+  listEl.innerHTML = shown.map(eventCardHtml).join("") +
+    (items.length > shown.length ? `<button type="button" class="btn btn-secondary btn-block more-btn" data-more>Ver mais (${items.length - shown.length})</button>` : "");
+  const more = listEl.querySelector("[data-more]");
+  if (more) more.addEventListener("click", () => { visibleLimit += EVENT_PAGE_SIZE; render(); });
 }

@@ -43,11 +43,12 @@ async function applyEvents(events, { fade = true } = {}) {
  const listEl = document.getElementById("events-list");
  renderNextEventCard(events, "porteiro");
 
- let html;
  if (events.length === 0) {
- html = `<div class="empty-state">Nenhum evento cadastrado. Peça ao administrador para criar um evento primeiro.</div>`;
- } else {
- html = events.map((event) => `
+ listEl.innerHTML = `<div class="empty-state">Nenhum evento cadastrado. Peça ao administrador ou ao organizador para criar um evento primeiro.</div>`;
+ listEl.removeAttribute("aria-busy");
+ return;
+ }
+ renderEventListWithFilters(listEl, events, (event) => `
  <div class="event-item">
  <div>
  <div class="event-name">
@@ -58,13 +59,5 @@ async function applyEvents(events, { fade = true } = {}) {
  </div>
  <a href="/checkin/${event.id}" class="btn btn-primary">${icon("scan")} Trabalhar neste evento</a>
  </div>
- `).join("");
- }
-
- if (fade) {
- await renderEventsListWithFade(listEl, html);
- } else {
- listEl.innerHTML = html;
- listEl.removeAttribute("aria-busy");
- }
+ `);
 }

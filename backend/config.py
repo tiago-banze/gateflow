@@ -144,3 +144,8 @@ def get_or_create_secret_key():
     with open(SECRET_KEY_PATH, "w", encoding="utf-8") as f:
         f.write(new_key)
     return new_key
+
+
+# Retenção: eventos encerrados há mais de X dias são apagados (com convidados e RSVPs).
+# 0 desativa a limpeza automática.
+EVENT_RETENTION_DAYS = int(os.environ.get("GATEFLOW_RETENTION_DAYS", "365"))

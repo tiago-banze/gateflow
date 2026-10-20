@@ -53,11 +53,7 @@ async function applyEvents(events, { fade = true } = {}) {
  allEventsCache = events;
  renderNextEventCard(events, "admin");
 
- let html;
- if (events.length === 0) {
- html = `<div class="empty-state">Nenhum evento ainda. Toque em “Novo evento” para criar o primeiro.</div>`;
- } else {
- html = events.map((event) => `
+ const itemHtml = (event) => `
  <div class="event-item">
  <div>
  <div class="event-name">
@@ -76,22 +72,21 @@ async function applyEvents(events, { fade = true } = {}) {
  </div>
  </div>
  </div>
- `).join("");
- }
-
- if (fade) {
- await renderEventsListWithFade(listEl, html);
- } else {
- listEl.innerHTML = html;
- listEl.removeAttribute("aria-busy");
- }
-
+ `;
+ const bind = () => {
  listEl.querySelectorAll("[data-delete-event]").forEach((btn) => {
  btn.addEventListener("click", () => handleDeleteEvent(btn.getAttribute("data-delete-event")));
  });
  listEl.querySelectorAll("[data-edit-event]").forEach((btn) => {
  btn.addEventListener("click", () => openEditEventModal(btn.getAttribute("data-edit-event")));
  });
+ };
+ if (events.length === 0) {
+ listEl.innerHTML = `<div class="empty-state">Nenhum evento ainda. Toque em “Novo evento” para criar o primeiro.</div>`;
+ listEl.removeAttribute("aria-busy");
+ return;
+ }
+ renderEventListWithFilters(listEl, events, itemHtml, bind);
 }
 
 async function handleCreateEvent(e) {

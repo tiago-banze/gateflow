@@ -478,3 +478,79 @@ function eventCardHtml(event) {
       </div>
     </a>`;
 }
+
+// --------------------------------------------------------------------------
+// LISTAS DE EVENTOS: próximos e encerrados separados, 5 de cada vez.
+// Por defeito só aparecem os que ainda vão acontecer; "Encerrados" e "Todos"
+// são escolhas explícitas. Usado pelas listas do organizador, admin e porteiro.
+// --------------------------------------------------------------------------
+const EVENT_PAGE_SIZE = 5;
+const EVENT_FILTERS = {
+ proximos: (e) => e.status.code !== "encerrado",
+ encerrados: (e) => e.status.code === "encerrado",
+ todos: () => true,
+};
+const EVENT_FILTER_LABELS = { proximos: "Próximos", encerrados: "Encerrados", todos: "Todos" };
+
+function sortEventsForView(events, filter) {
+ const byDate = (a, b) => new Date(a.event_date) - new Date(b.event_date);
+ const upcoming = events.filter(EVENT_FILTERS.proximos).sort(byDate); // mais próximo primeiro
+ const past = events.filter(EVENT_FILTERS.encerrados).sort((a, b) => byDate(b, a)); // mais recente primeiro
+ if (filter === "proximos") return upcoming;
+ if (filter === "encerrados") return past;
+ return [...upcoming, ...past];
+}
+
+/**
+ * Mostra os eventos filtrados/ordenados, com "Ver mais" para além de 5.
+ * `state` guarda {filter, limit}; `itemHtml(evento)` devolve o HTML de um item.
+ */
+function renderPagedEvents(listEl, events, state, itemHtml, afterRender) {
+ const items = sortEventsForView(events, state.filter);
+ const shown = items.slice(0, state.limit);
+ let html = shown.map(itemHtml).join("");
+ if (!items.length) {
+  html = `<div class="empty-state">${state.filter === "encerrados" ? "Nenhum evento encerrado." : "Nenhum evento por realizar."}</div>`;
+ }
+ if (items.length > shown.length) {
+  html += `<button type="button" class="btn btn-secondary btn-block more-btn" data-more>Ver mais (${items.length - shown.length})</button>`;
+ }
+ listEl.innerHTML = html;
+ listEl.removeAttribute("aria-busy");
+ const more = listEl.querySelector("[data-more]");
+ if (more) more.addEventListener("click", () => {
+  state.limit += EVENT_PAGE_SIZE;
+  renderPagedEvents(listEl, events, state, itemHtml, afterRender);
+ });
+ if (afterRender) afterRender(listEl);
+}
+
+const _eventListStates = new WeakMap();
+
+/** Lista com filtros (Próximos / Encerrados / Todos) inseridos por cima de `listEl`. */
+function renderEventListWithFilters(listEl, events, itemHtml, afterRender) {
+ let state = _eventListStates.get(listEl);
+ if (!state) {
+  state = { filter: "proximos", limit: EVENT_PAGE_SIZE };
+  _eventListStates.set(listEl, state);
+  const chips = document.createElement("div");
+  chips.className = "chip-row";
+  chips.setAttribute("role", "group");
+  chips.setAttribute("aria-label", "Filtrar eventos");
+  listEl.parentNode.insertBefore(chips, listEl);
+  state.chips = chips;
+  chips.addEventListener("click", (event) => {
+   const btn = event.target.closest("[data-filter]");
+   if (!btn) return;
+   state.filter = btn.getAttribute("data-filter");
+   state.limit = EVENT_PAGE_SIZE;
+   renderEventListWithFilters(listEl, state.events, itemHtml, afterRender);
+  });
+ }
+ state.events = events;
+ if (!events.some(EVENT_FILTERS.proximos) && events.length && !state.touched) { state.filter = "todos"; state.touched = true; }
+ state.chips.innerHTML = Object.keys(EVENT_FILTERS).map((name) =>
+  `<button type="button" class="chip" data-filter="${name}" aria-pressed="${name === state.filter}">${EVENT_FILTER_LABELS[name]} <span class="chip-count">${events.filter(EVENT_FILTERS[name]).length}</span></button>`
+ ).join("");
+ renderPagedEvents(listEl, events, state, itemHtml, afterRender);
+}

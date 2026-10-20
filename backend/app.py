@@ -11,6 +11,8 @@ local possam se conectar ao mesmo backend simultaneamente.
 import os
 import re
 import io
+import shutil
+import time
 import hashlib
 import hmac
 import traceback
@@ -124,6 +126,32 @@ app.config.update(
     # Em produção (HTTPS na Vercel) o cookie só viaja por ligação segura.
     SESSION_COOKIE_SECURE=config.IS_SERVERLESS,
 )
+
+
+_last_purge_at = 0.0
+
+
+@app.before_request
+def purge_expired_events_periodically():
+    """Limpeza de eventos antigos (no máximo 1x por hora por instância; nunca bloqueia o pedido)."""
+    global _last_purge_at
+    if config.EVENT_RETENTION_DAYS <= 0 or request.path.startswith("/static"):
+        return
+    now = time.time()
+    if now - _last_purge_at < 3600:
+        return
+    _last_purge_at = now
+    try:
+        for event_id in db.purge_expired_events(config.EVENT_RETENTION_DAYS):
+            shutil.rmtree(os.path.join(config.QRCODES_DIR, event_id), ignore_errors=True)
+            for suffix in ("convites", "contingencia", "financeiro"):
+                try:
+                    os.remove(os.path.join(config.EXPORTS_DIR, f"{event_id}_{suffix}.pdf"))
+                except OSError:
+                    pass
+            app.logger.info("Evento %s apagado (retenção de %s dias).", event_id, config.EVENT_RETENTION_DAYS)
+    except Exception:  # noqa: BLE001
+        app.logger.error("Falha na limpeza de eventos antigos: %s", traceback.format_exc())
 
 
 @app.before_request
