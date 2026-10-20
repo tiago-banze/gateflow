@@ -9,6 +9,7 @@
 const EVENT_ID = document.body.getAttribute("data-event-id");
 const EVENT_STATUS = document.body.getAttribute("data-event-status"); // "proximo" | "andamento" | "encerrado"
 const EVENT_HAS_ENDED = EVENT_STATUS === "encerrado";
+const GROUP_LABEL = document.body.getAttribute("data-group-label") || "Mesa";
 
 let currentSearchTerm = "";
 let pollingIntervalId = null;
@@ -116,6 +117,8 @@ document.addEventListener("DOMContentLoaded", () => {
  const scannerBtn = document.getElementById("btn-open-scanner");
  if (scannerBtn) scannerBtn.addEventListener("click", openScanner);
  document.getElementById("btn-close-scanner").addEventListener("click", closeScanner);
+ const finishBtn = document.getElementById("btn-finish-scanner");
+ if (finishBtn) finishBtn.addEventListener("click", () => { closeScanner(); if (sessionEntries) showToast(`${sessionEntries} entrada(s) registada(s) nesta sessão.`, "success"); });
 });
 
 // --------------------------------------------------------------------------
@@ -263,7 +266,7 @@ function renderGuestCards(guests, container) {
  <div class="guest-card ${g.checked_in ? "checked-in" : ""}" data-guest-id="${g.id}">
  <div class="guest-name">${escapeHtml(g.full_name)}</div>
  <div class="guest-role">${escapeHtml(g.role || "Convidado")}</div>
- <div class="guest-table">${icon("grid", 15)} Mesa <strong>${escapeHtml(g.table_number || "Não definida")}</strong></div>
+ <div class="guest-table">${icon("grid", 15)} ${escapeHtml(GROUP_LABEL)} <strong>${escapeHtml(g.table_number || "Não definida")}</strong>${g.companions_allowed ? ` <span class="party-chip">+${Number(g.companions_allowed)}</span>` : ""}</div>
  ${g.checked_in
  ? `<div class="checked-label">${icon("check-circle")} Presença confirmada</div>`
  : EVENT_HAS_ENDED
@@ -381,10 +384,16 @@ async function offlineCheckinFallback(guestId) {
 // BANNER DE CONFIRMAÇÃO (Mesa em destaque, para o porteiro avisar o convidado)
 // --------------------------------------------------------------------------
 
+function partyLine(guest) {
+ const n = Number(guest.party_size || 1 + (guest.companions_allowed || 0));
+ return n > 1 ? `<div class="checkin-confirmation-party">${icon("users", 18)} Entram <strong>${n}</strong> pessoas</div>` : "";
+}
+
 function showCheckinConfirmation(guest) {
- // Fecha o scanner se estiver aberto, para o banner não ficar escondido atrás da câmera
+ // Com a câmara em modo contínuo o resultado aparece no banner do topo (a câmara fica aberta).
  if (!document.getElementById("scanner-modal").classList.contains("hidden")) {
- closeScanner();
+  showScanBanner("ok", guest);
+  return;
  }
 
  const existing = document.getElementById("checkin-confirmation-banner");
@@ -401,9 +410,10 @@ function showCheckinConfirmation(guest) {
  <div class="checkin-confirmation-name">${escapeHtml(guest.full_name)}</div>
  <div class="checkin-confirmation-label">Check-in confirmado</div>
  <div class="checkin-confirmation-table">
- <span>MESA</span>
+ <span>${escapeHtml(GROUP_LABEL.toUpperCase())}</span>
  <strong>${escapeHtml(tableLabel)}</strong>
  </div>
+ ${partyLine(guest)}
  <button class="btn btn-primary btn-lg" id="btn-dismiss-confirmation">OK</button>
  </div>
  `;
@@ -578,57 +588,150 @@ function extractGuestIdFromQr(rawValue) {
  return guestId || null;
 }
 
-async function onQrScanSuccess(decodedText) {
- if (isProcessingCheckin) return; // evita disparos múltiplos do mesmo frame
- isProcessingCheckin = true;
+// --------------------------------------------------------------------------
+// LEITURA CONTÍNUA: câmara aberta uma só vez + leitor USB/Bluetooth.
+// Cada código passa pela MESMA fila: processa um de cada vez, ignora o mesmo
+// código repetido durante alguns segundos e aceita outro código logo a seguir.
+// --------------------------------------------------------------------------
 
+const SAME_CODE_COOLDOWN_MS = 4000;
+const recentScans = new Map(); // texto lido -> instante
+const scanQueue = [];
+let scanQueueRunning = false;
+let sessionEntries = 0;
+let bannerTimer = null;
+
+function showScanBanner(kind, guest, message) {
+ let banner = document.getElementById("scan-banner");
+ if (!banner) {
+  banner = document.createElement("div");
+  banner.id = "scan-banner";
+  banner.setAttribute("role", "status");
+  banner.setAttribute("aria-live", "assertive");
+  document.body.appendChild(banner);
+ }
+ const name = guest ? escapeHtml(guest.full_name) : "";
+ let detail = "";
+ let title = "";
+ if (kind === "ok") {
+  title = "Entrada confirmada";
+  const n = Number(guest.party_size || 1 + (guest.companions_allowed || 0));
+  detail = `<span>${escapeHtml(GROUP_LABEL)} <strong>${escapeHtml(guest.table_number || "Não definida")}</strong></span>`
+   + (guest.role && guest.role !== "Convidado" ? `<span class="badge badge-brand">${escapeHtml(guest.role)}</span>` : "")
+   + (n > 1 ? `<span class="party-chip">${icon("users", 14)} ${n} pessoas</span>` : "");
+ } else if (kind === "dup") {
+  title = "Já entrou";
+  detail = `<span>${guest && guest.checkin_time_local ? `às ${escapeHtml(guest.checkin_time_local.slice(11))}` : "anteriormente"}</span>`;
+ } else {
+  title = "Não aceite";
+  detail = `<span>${escapeHtml(message || "QR Code inválido.")}</span>`;
+ }
+ banner.className = `scan-banner is-${kind}`;
+ banner.innerHTML = `<div class="scan-banner-icon">${icon(kind === "ok" ? "check" : kind === "dup" ? "alert" : "x", 26)}</div>
+  <div class="scan-banner-body"><strong>${title}</strong>${name ? `<div class="scan-banner-name">${name}</div>` : ""}<div class="scan-banner-detail">${detail}</div></div>
+  ${sessionEntries ? `<div class="scan-banner-count" title="Entradas nesta sessão">${sessionEntries}</div>` : ""}`;
+ banner.classList.add("is-visible");
+ if (navigator.vibrate) navigator.vibrate(kind === "ok" ? 60 : [80, 60, 80]);
+ clearTimeout(bannerTimer);
+ bannerTimer = setTimeout(() => banner.classList.remove("is-visible"), kind === "ok" ? 2500 : 3500);
+}
+
+function enqueueScan(decodedText, source) {
+ const text = String(decodedText || "").trim();
+ if (!text || text.length > 200) return;
+ const now = Date.now();
+ const last = recentScans.get(text);
+ if (last && now - last < SAME_CODE_COOLDOWN_MS) return; // mesmo código ainda no ecrã/leitor
+ recentScans.set(text, now);
+ for (const [key, time] of recentScans) if (now - time > 60000) recentScans.delete(key);
+ scanQueue.push({ text, source });
+ runScanQueue();
+}
+
+async function runScanQueue() {
+ if (scanQueueRunning) return;
+ scanQueueRunning = true;
+ while (scanQueue.length) {
+  const { text } = scanQueue.shift();
+  try { await processScan(text); } catch (err) { console.error("Erro no check-in:", err); showScanBanner("err", null, "Erro inesperado."); }
+ }
+ scanQueueRunning = false;
+}
+
+async function processScan(decodedText) {
+ if (EVENT_HAS_ENDED) { playErrorSound(); showScanBanner("err", null, "Evento encerrado."); return; }
  const result = await apiRequest("/api/checkin/qr", {
- method: "POST",
- body: JSON.stringify({
- qr_value: decodedText,
- event_id: EVENT_ID,
- }),
+  method: "POST",
+  body: JSON.stringify({ qr_value: decodedText, event_id: EVENT_ID }),
  });
 
- if (!result.success) {
- if (isNetworkFailure(result) && offlineReady) {
- const guestId = extractGuestIdFromQr(decodedText);
- if (guestId) {
- const applied = await offlineCheckinFallback(guestId);
- if (applied === "checked_in") {
- playSuccessSound();
- const guest = await OfflineCheckin.findGuestById(guestId);
- showCheckinConfirmation(guest);
- refreshGuests();
- updateOfflineIndicator();
- setTimeout(() => { isProcessingCheckin = false; }, 1500);
- return;
- }
- if (applied === "already_checked_in") {
- playErrorSound();
- showToast("Check-in já realizado (registado neste aparelho)!", "error");
- setTimeout(() => { isProcessingCheckin = false; }, 1500);
- return;
- }
- }
- }
- playErrorSound();
- if (result.already_checked_in) {
- showToast(result.error || "Check-in já realizado!", "error");
- } else {
- showToast(result.error || "QR Code inválido.", "error");
- }
- } else {
- playSuccessSound();
- showCheckinConfirmation(result.data);
- refreshGuests();
- loadLiveStats();
+ if (result.success) {
+  sessionEntries += 1;
+  playSuccessSound();
+  showScanBanner("ok", result.data);
+  refreshGuests();
+  loadLiveStats();
+  return;
  }
 
- // Pequeno intervalo antes de aceitar o próximo QR Code, para permitir
- // que o porteiro afaste a câmera e evitar leituras duplicadas do mesmo código.
- setTimeout(() => { isProcessingCheckin = false; }, 1500);
+ if (isNetworkFailure(result) && offlineReady) {
+  const guestId = extractGuestIdFromQr(decodedText);
+  if (guestId) {
+   const applied = await offlineCheckinFallback(guestId);
+   if (applied === "checked_in") {
+    sessionEntries += 1;
+    playSuccessSound();
+    showScanBanner("ok", await OfflineCheckin.findGuestById(guestId));
+    refreshGuests();
+    updateOfflineIndicator();
+    return;
+   }
+   if (applied === "already_checked_in") {
+    playErrorSound();
+    showScanBanner("dup", await OfflineCheckin.findGuestById(guestId));
+    return;
+   }
+  }
+ }
+ playErrorSound();
+ if (result.already_checked_in) showScanBanner("dup", result.data);
+ else showScanBanner("err", null, result.error || "QR Code inválido.");
 }
+
+function onQrScanSuccess(decodedText) {
+ enqueueScan(decodedText, "camera");
+}
+
+// Leitor USB / Bluetooth ("teclado"): escreve o código muito depressa e termina com Enter.
+// Funciona em qualquer momento nesta página, sem tocar em nada.
+(function bindHardwareScanner() {
+ let buffer = "";
+ let lastKey = 0;
+ let fastKeys = 0;
+ document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const now = Date.now();
+  const gap = now - lastKey;
+  lastKey = now;
+  if (event.key === "Enter") {
+   const code = buffer;
+   const looksScanned = fastKeys >= Math.min(8, code.length - 1);
+   buffer = ""; fastKeys = 0;
+   if (code.length >= 8 && looksScanned) {
+    event.preventDefault();
+    const field = document.activeElement;
+    if (field && field.tagName === "INPUT" && field.value.includes(code)) field.value = field.value.replace(code, "");
+    enqueueScan(code, "reader");
+   }
+   return;
+  }
+  if (event.key.length !== 1) return;
+  if (gap > 80) { buffer = ""; fastKeys = 0; }
+  else fastKeys += 1;
+  buffer += event.key;
+  if (buffer.length > 200) buffer = "";
+ }, true);
+})();
 
 async function loadLiveStats() {
   const barEl = document.getElementById("live-stats-bar");
@@ -640,8 +743,9 @@ async function loadLiveStats() {
 
   const stats = result.data;
   barEl.innerHTML = `
-    <div class="stat-pill"><span class="stat-label">${stats.event_module === "A" ? "Convidados" : "Vendidos"}</span><span class="stat-value">${stats.total}</span></div>
+    <div class="stat-pill"><span class="stat-label">Convidados</span><span class="stat-value">${stats.total}</span></div>
  <div class="stat-pill success"><span class="stat-label">Entradas</span><span class="stat-value">${stats.checked_in}</span></div>
+ <div class="stat-pill"><span class="stat-label">Pessoas dentro</span><span class="stat-value">${stats.people_entered || 0}<small>/${stats.people_expected || 0}</small></span></div>
  <div class="stat-pill hide-on-mobile"><span class="stat-label">Pendentes</span><span class="stat-value">${stats.pending}</span></div>
  <div class="stat-pill hide-on-mobile"><span class="stat-label">Taxa de comparência</span><span class="stat-value">${stats.attendance_rate}%</span></div>
   `;

@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 from flask import (
     Flask, request, jsonify, render_template, send_file, send_from_directory, abort,
-    session, redirect, url_for,
+    session, redirect, url_for, Response,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -32,9 +32,10 @@ import bootstrap
 import database as db
 import email_service
 import event_status
+import guest_import
 import notifications
 from security import login_attempt_tracker
-from text_utils import slugify_filename, normalize_msisdn
+from text_utils import slugify_filename, normalize_msisdn, normalize_username, validate_username
 from ssl_utils import ensure_self_signed_cert
 from qrcode_utils import generate_guest_qrcode, extract_guest_id_from_payload, QRCodeGenerationError
 from pdf_generator import generate_invites_pdf, generate_contingency_pdf, PDFGenerationError
@@ -208,6 +209,18 @@ def login_required_page(view_func):
     return wrapper
 
 
+def _with_party_info(guest):
+    """Acrescenta ao convidado quantas pessoas a entrada cobre e a hora local do check-in."""
+    if not guest:
+        return guest
+    extra = (guest.get("companions_confirmed") or 0) if guest.get("rsvp_status") == "confirmed" \
+        else (guest.get("companions_allowed") or 0)
+    guest = dict(guest)
+    guest["party_size"] = 1 + max(0, int(extra))
+    guest["checkin_time_local"] = event_status.local_time_label(guest.get("checkin_time"))
+    return guest
+
+
 def _porteiro_can_access_event(user, event):
     """
     Regra de isolamento de porteiros (Item C da Fase 5):
@@ -372,7 +385,7 @@ def page_login():
 
     error = None
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
+        username = normalize_username(request.form.get("username"))
         password = request.form.get("password") or ""
         client_ip = request.remote_addr or "unknown"
 
@@ -424,7 +437,7 @@ def page_organizador_signup():
     if request.method == "POST":
         full_name = (request.form.get("full_name") or "").strip()
         email = (request.form.get("email") or "").strip()
-        username = (request.form.get("username") or "").strip()
+        username = normalize_username(request.form.get("username"))
         phone = (request.form.get("phone") or "").strip()
         password = request.form.get("password") or ""
         password_confirm = request.form.get("password_confirm") or ""
@@ -433,6 +446,8 @@ def page_organizador_signup():
 
         if not full_name or not email or not username or not password:
             error = "Preencha nome completo, e-mail, usuário e senha."
+        elif validate_username(username):
+            error = validate_username(username)
         elif not email_pattern.match(email):
             error = "Informe um e-mail válido."
         elif len(password) < 8:
@@ -699,6 +714,8 @@ def api_organizador_create_event():
         location = (payload.get("location") or "").strip()
         event_date = (payload.get("event_date") or "").strip()
         description = (payload.get("description") or "").strip()
+        event_type = (payload.get("event_type") or "").strip()
+        group_label = (payload.get("group_label") or "").strip()
 
         if not name or not organizer_display_name or not location or not event_date:
             return jsonify({
@@ -712,6 +729,7 @@ def api_organizador_create_event():
 
         event = db.create_event_full(
             current_user["id"], name, organizer_display_name, location, event_date, description=description,
+            event_type=event_type, group_label=group_label,
         )
         event["status"] = event_status.compute_event_status(event.get("event_date"))
         return jsonify({"success": True, "data": event}), 201
@@ -763,6 +781,9 @@ def api_organizador_update_event(event_id):
             "location": (payload.get("location") or "").strip() or None,
             "event_date": (payload.get("event_date") or "").strip() or None,
             "description": payload.get("description", None),
+            "event_type": payload.get("event_type") if payload.get("event_type") in db.EVENT_TYPES else None,
+            "group_label": payload.get("group_label") if payload.get("group_label") in db.GROUP_LABELS else None,
+            "auto_send_invites": (1 if payload.get("auto_send_invites") else 0) if "auto_send_invites" in payload else None,
         }
 
         event, owned = db.update_event_by_organizador(event_id, current_user["id"], **update_fields)
@@ -853,70 +874,76 @@ def api_organizador_create_guest_manual(event_id):
         return jsonify({"success": False, "error": f"Erro ao cadastrar convidado: {exc}"}), 500
 
 
+def _handle_guest_import(event_id):
+    """
+    Importação segura de convidados: ficheiro .xlsx/.csv (lido em memória,
+    nunca gravado em disco) ou texto colado. Com preview=1 só simula e
+    devolve o que vai acontecer (novos, atualizados, avisos).
+    Convidados já existentes são ATUALIZADOS, não duplicados.
+    """
+    preview = request.args.get("preview") == "1" or request.form.get("preview") == "1"
+    try:
+        upload = request.files.get("file")
+        if upload is not None and upload.filename:
+            data = upload.read(guest_import.MAX_FILE_BYTES + 1)
+            rows = guest_import.rows_from_upload(secure_filename(upload.filename), data)
+        else:
+            payload = request.get_json(silent=True) or {}
+            preview = preview or bool(payload.get("preview"))
+            rows = guest_import.rows_from_text(payload.get("text") or "")
+        guests_data, issues = guest_import.parse_rows(rows)
+        if not guests_data:
+            return jsonify({"success": False, "error": "Nenhum convidado válido encontrado.", "issues": issues}), 400
+
+        result = db.import_guests_upsert(event_id, guests_data, dry_run=preview)
+        if preview:
+            return jsonify({"success": True, "data": {
+                "preview": True,
+                "total": len(guests_data),
+                "new_count": sum(1 for r in result["preview"] if r["action"] == "novo"),
+                "updated_count": sum(1 for r in result["preview"] if r["action"] == "atualizado"),
+                "unchanged_count": result["unchanged"],
+                "issues": issues,
+                "rows": result["preview"][:300],
+            }})
+
+        qr_errors = []
+        for guest in result["created"]:
+            try:
+                qr_path = generate_guest_qrcode(event_id, guest["id"])
+                db.update_guest_qr_path(guest["id"], qr_path)
+            except QRCodeGenerationError as exc:
+                qr_errors.append(str(exc))
+        summary = (
+            f"{len(result['created'])} novo(s), {len(result['updated'])} atualizado(s), "
+            f"{result['unchanged']} sem alterações."
+        )
+        return jsonify({"success": True, "data": {
+            "imported_count": len(result["created"]),
+            "updated_count": len(result["updated"]),
+            "skipped_count": result["unchanged"],
+            "summary": summary,
+            "warnings": issues,
+            "qr_generation_errors": qr_errors,
+        }}), 201
+    except guest_import.ImportRejected as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except db.DatabaseError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+    except Exception:  # noqa: BLE001
+        app.logger.error("Erro na importação: %s", traceback.format_exc())
+        return jsonify({"success": False, "error": "Erro ao processar a lista. Verifique o formato e tente novamente."}), 500
+
+
 @app.route("/api/organizador/events/<event_id>/import", methods=["POST"])
 @role_required_api("organizador")
+@limiter.limit("30 per minute")
 def api_organizador_import_guests(event_id):
     current_user = get_current_user()
     event, error = _get_owned_event(event_id, current_user["id"])
     if error:
         return error
-
-    if "file" not in request.files:
-        return jsonify({"success": False, "error": "Nenhum arquivo enviado."}), 400
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"success": False, "error": "Nome de arquivo inválido."}), 400
-
-    filename = secure_filename(file.filename)
-    _, ext = os.path.splitext(filename.lower())
-    if ext not in config.ALLOWED_UPLOAD_EXTENSIONS:
-        return jsonify({"success": False, "error": "Apenas arquivos .xlsx são aceitos."}), 400
-
-    temp_path = os.path.join(config.UPLOADS_DIR, filename)
-    try:
-        file.save(temp_path)
-        guests_data, warnings = _parse_guests_xlsx(temp_path)
-
-        if not guests_data:
-            return jsonify({"success": False, "error": "Nenhum convidado válido encontrado na planilha."}), 400
-
-        created_guests, skipped_count = db.import_guests_with_dedup(event_id, guests_data)
-
-        generation_errors = []
-        for guest in created_guests:
-            try:
-                qr_path = generate_guest_qrcode(event_id, guest["id"])
-                db.update_guest_qr_path(guest["id"], qr_path)
-            except QRCodeGenerationError as exc:
-                generation_errors.append(str(exc))
-
-        summary = (
-            f"{len(created_guests)} convidado(s) adicionado(s), "
-            f"{skipped_count} pulado(s) por já existirem neste evento."
-        )
-        return jsonify({
-            "success": True,
-            "data": {
-                "imported_count": len(created_guests),
-                "skipped_count": skipped_count,
-                "summary": summary,
-                "warnings": warnings,
-                "qr_generation_errors": generation_errors,
-            },
-        }), 201
-    except db.DatabaseError as exc:
-        return jsonify({"success": False, "error": str(exc)}), 500
-    except ValueError as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
-    except Exception as exc:  # noqa: BLE001
-        app.logger.error("Erro na importação (organizador): %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao processar a planilha: {exc}"}), 500
-    finally:
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+    return _handle_guest_import(event_id)
 
 
 # ============================================================================
@@ -1270,6 +1297,60 @@ def api_organizador_guest_rsvp_link(event_id, guest_id):
     return jsonify({"success": True, "data": {"url": _prepare_invite(guest)}})
 
 
+@app.route("/api/organizador/events/<event_id>/guests/send-preview", methods=["GET"])
+@role_required_api("organizador")
+def api_organizador_send_preview(event_id):
+    """
+    Pré-visualização ANTES de enviar: quantos convidados recebem, por que
+    canal, quem fica de fora (sem contacto) e o texto exato das mensagens.
+    Não envia nada.
+    """
+    current_user = get_current_user()
+    event, error = _get_owned_event(event_id, current_user["id"])
+    if error:
+        return error
+    kind = "reminder" if request.args.get("kind") == "reminder" else "invite"
+    pending = db.list_guests_pending_invite(event_id) if kind == "invite" else db.list_guests_pending_reminder(event_id)
+    channels = notifications.channel_status()
+
+    phone_count = email_count = 0
+    no_contact = []
+    for guest in pending:
+        has_phone = bool(normalize_msisdn(guest.get("phone")))
+        has_email = bool((guest.get("email") or "").strip())
+        phone_count += has_phone
+        email_count += has_email
+        if not has_phone and not has_email:
+            no_contact.append(guest["full_name"])
+
+    try:
+        date_label = datetime.fromisoformat(event["event_date"]).strftime("%d/%m/%Y às %H:%M")
+    except (ValueError, TypeError):
+        date_label = event.get("event_date", "")
+    sample_name = (pending[0]["full_name"] if pending else "Nome do Convidado")
+    if kind == "invite":
+        text = f"Olá {sample_name}! Convite para {event['name']}. Confirme a presença: https://…/rsvp/xxxx"
+        email_subject = f"O seu convite: {event['name']}"
+    else:
+        text = f"Olá {sample_name}! {event['name']} é a {date_label}. O seu QR Code de acesso: https://…/qr/xxxx"
+        email_subject = f"Lembrete: {event['name']}"
+    return jsonify({"success": True, "data": {
+        "kind": kind,
+        "total_pending": len(pending),
+        "by_channel": {
+            "phone": phone_count if (channels["whatsapp"]["configured"] or channels["sms"]["configured"]) else 0,
+            "email": email_count if channels["email"]["configured"] else 0,
+        },
+        "no_contact": no_contact[:50],
+        "no_contact_count": len(no_contact),
+        "channels": channels,
+        "any_channel": notifications.any_channel_configured(),
+        "sample": {"text": text, "email_subject": email_subject, "name": sample_name},
+        "recipients": [g["full_name"] for g in pending[:200]],
+        "auto_send_invites": bool(event.get("auto_send_invites")),
+    }})
+
+
 @app.route("/api/organizador/events/<event_id>/guests/send-invites", methods=["POST"])
 @role_required_api("organizador")
 @limiter.limit("30 per minute")
@@ -1532,11 +1613,12 @@ def api_organizador_create_porteiro():
 
         payload = request.get_json(force=True, silent=True) or {}
         full_name = (payload.get("full_name") or "").strip()
-        username = (payload.get("username") or "").strip()
+        username = normalize_username(payload.get("username"))
         password = payload.get("password") or ""
 
-        if not username:
-            return jsonify({"success": False, "error": "O usuário (login) é obrigatório."}), 400
+        username_error = validate_username(username)
+        if username_error:
+            return jsonify({"success": False, "error": username_error}), 400
         if len(password) < MIN_PASSWORD_LENGTH:
             return jsonify({
                 "success": False,
@@ -1569,6 +1651,16 @@ def api_organizador_delete_porteiro(porteiro_id):
     return jsonify({"success": True})
 
 
+@app.route("/api/events/template-csv", methods=["GET"])
+@role_required_api("admin", "organizador")
+def api_download_guest_template_csv():
+    return Response(
+        guest_import.build_template_csv(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="modelo_convidados_gateflow.csv"'},
+    )
+
+
 @app.route("/api/events/template-xlsx", methods=["GET"])
 @role_required_api("admin", "organizador")
 def api_download_guest_template():
@@ -1586,7 +1678,7 @@ def api_download_guest_template():
         sheet = workbook.active
         sheet.title = "Convidados"
 
-        headers = config.REQUIRED_XLSX_COLUMNS + [config.OPTIONAL_XLSX_COLUMN_TABLE]
+        headers = guest_import.TEMPLATE_HEADERS
         sheet.append(headers)
 
         header_fill = PatternFill(start_color="004E92", end_color="004E92", fill_type="solid")
@@ -1596,9 +1688,9 @@ def api_download_guest_template():
             cell.fill = header_fill
             cell.font = header_font
 
-        sheet.append(["Ex: João Manuel Sitoe", "joao@email.com", "841234567", "Convidado", "Mesa 01"])
+        sheet.append(guest_import.TEMPLATE_EXAMPLE)
 
-        column_widths = [28, 30, 16, 20, 14]
+        column_widths = [28, 30, 16, 16, 16, 14]
         for i, width in enumerate(column_widths, start=1):
             sheet.column_dimensions[chr(64 + i)].width = width
 
@@ -1704,157 +1796,11 @@ def api_delete_event(event_id):
 
 @app.route("/api/events/<event_id>/import", methods=["POST"])
 @role_required_api("admin")
+@limiter.limit("30 per minute")
 def api_import_guests(event_id):
-    event = db.get_event(event_id)
-    if not event:
+    if not db.get_event(event_id):
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
-
-    if "file" not in request.files:
-        return jsonify({"success": False, "error": "Nenhum arquivo enviado."}), 400
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"success": False, "error": "Nome de arquivo inválido."}), 400
-
-    filename = secure_filename(file.filename)
-    _, ext = os.path.splitext(filename.lower())
-    if ext not in config.ALLOWED_UPLOAD_EXTENSIONS:
-        return jsonify({"success": False, "error": "Apenas arquivos .xlsx são aceitos."}), 400
-
-    temp_path = os.path.join(config.UPLOADS_DIR, filename)
-    try:
-        file.save(temp_path)
-        guests_data, warnings = _parse_guests_xlsx(temp_path)
-
-        if not guests_data:
-            return jsonify({
-                "success": False,
-                "error": "Nenhum convidado válido encontrado na planilha."
-            }), 400
-
-        # Deduplicação: convidados já existentes para ESTE evento (por
-        # e-mail, ou por Nome+Telefone quando não há e-mail) são ignorados
-        # em vez de duplicados.
-        created_guests, skipped_count = db.import_guests_with_dedup(event_id, guests_data)
-
-        # Gera o QR Code apenas dos convidados efetivamente novos
-        generation_errors = []
-        for guest in created_guests:
-            try:
-                qr_path = generate_guest_qrcode(event_id, guest["id"])
-                db.update_guest_qr_path(guest["id"], qr_path)
-            except QRCodeGenerationError as exc:
-                generation_errors.append(str(exc))
-
-        summary = (
-            f"{len(created_guests)} convidado(s) adicionado(s), "
-            f"{skipped_count} pulado(s) por já existirem neste evento."
-        )
-
-        return jsonify({
-            "success": True,
-            "data": {
-                "imported_count": len(created_guests),
-                "skipped_count": skipped_count,
-                "summary": summary,
-                "warnings": warnings,
-                "qr_generation_errors": generation_errors,
-            },
-        }), 201
-
-    except db.DatabaseError as exc:
-        return jsonify({"success": False, "error": str(exc)}), 500
-    except ValueError as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
-    except Exception as exc:  # noqa: BLE001
-        app.logger.error("Erro na importação: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao processar a planilha: {exc}"}), 500
-    finally:
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
-
-
-def _parse_guests_xlsx(file_path):
-    """
-    Lê a planilha .xlsx e retorna (guests_data, warnings).
-    Valida cabeçalho e ignora linhas em branco ou incompletas (registrando
-    aviso), sem interromper a importação inteira por causa de uma linha ruim.
-    """
-    try:
-        workbook = openpyxl.load_workbook(file_path, data_only=True)
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"Arquivo .xlsx corrompido ou inválido: {exc}") from exc
-
-    sheet = workbook.active
-    header_row = [str(cell.value).strip() if cell.value is not None else "" for cell in sheet[1]]
-
-    # Mapa auxiliar para localizar colunas de forma insensível a maiúsculas/
-    # minúsculas (ex: "Mesa", "MESA" e "mesa" devem ser todos reconhecidos).
-    # Em caso de cabeçalhos duplicados (mesmo nome em mais de uma coluna),
-    # fica a primeira ocorrência, que é o comportamento mais previsível.
-    header_lookup = {}
-    for idx, col_name in enumerate(header_row):
-        key = col_name.strip().lower()
-        if key and key not in header_lookup:
-            header_lookup[key] = idx
-
-    def _find_column_index(expected_name):
-        return header_lookup.get(expected_name.strip().lower())
-
-    column_index = {}
-    for expected_col in config.REQUIRED_XLSX_COLUMNS:
-        found_idx = _find_column_index(expected_col)
-        if found_idx is None:
-            raise ValueError(
-                f"Coluna obrigatória ausente na planilha: '{expected_col}'. "
-                f"Colunas esperadas: {', '.join(config.REQUIRED_XLSX_COLUMNS)}"
-            )
-        column_index[expected_col] = found_idx
-
-    # Coluna "Mesa" é OPCIONAL: planilhas antigas (sem essa coluna) continuam
-    # funcionando normalmente — todo convidado recebe o valor padrão. A busca
-    # também é insensível a maiúsculas/minúsculas (aceita "Mesa", "MESA", "mesa").
-    table_col_idx = _find_column_index(config.OPTIONAL_XLSX_COLUMN_TABLE)
-    has_table_column = table_col_idx is not None
-    if has_table_column:
-        column_index[config.OPTIONAL_XLSX_COLUMN_TABLE] = table_col_idx
-
-    guests = []
-    warnings = []
-    for row_number, row in enumerate(sheet.iter_rows(min_row=2), start=2):
-        values = [cell.value for cell in row]
-        if all(v is None or str(v).strip() == "" for v in values):
-            continue  # linha totalmente vazia, ignora silenciosamente
-
-        try:
-            full_name = str(values[column_index["Nome Completo"]] or "").strip()
-        except IndexError:
-            full_name = ""
-
-        if not full_name:
-            warnings.append(f"Linha {row_number}: ignorada por não ter 'Nome Completo'.")
-            continue
-
-        def _safe_get(col_name):
-            idx = column_index[col_name]
-            if idx >= len(values) or values[idx] is None:
-                return ""
-            return str(values[idx]).strip()
-
-        table_number = _safe_get(config.OPTIONAL_XLSX_COLUMN_TABLE) if has_table_column else ""
-
-        guests.append({
-            "full_name": full_name,
-            "email": _safe_get("Email"),
-            "phone": _safe_get("Telefone"),
-            "role": _safe_get("Cargo/Tipo"),
-            "table_number": table_number or config.DEFAULT_TABLE_LABEL,
-        })
-
-    return guests, warnings
+    return _handle_guest_import(event_id)
 
 
 # --------------------------------------------------------------------------
@@ -2194,10 +2140,10 @@ def api_checkin_manual(guest_id):
             return jsonify({
                 "success": False,
                 "error": "Check-in já realizado anteriormente!",
-                "data": guest,
+                "data": _with_party_info(guest),
                 "already_checked_in": True,
             }), 409
-        return jsonify({"success": True, "data": guest})
+        return jsonify({"success": True, "data": _with_party_info(guest)})
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
@@ -2244,11 +2190,11 @@ def api_checkin_qr():
             return jsonify({
                 "success": False,
                 "error": f"Check-in já realizado! ({updated_guest['full_name']})",
-                "data": updated_guest,
+                "data": _with_party_info(updated_guest),
                 "already_checked_in": True,
             }), 409
 
-        return jsonify({"success": True, "data": updated_guest})
+        return jsonify({"success": True, "data": _with_party_info(updated_guest)})
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
@@ -2284,12 +2230,13 @@ def api_create_user():
     try:
         payload = request.get_json(force=True, silent=True) or {}
         full_name = (payload.get("full_name") or "").strip()
-        username = (payload.get("username") or "").strip()
+        username = normalize_username(payload.get("username"))
         password = payload.get("password") or ""
         role = (payload.get("role") or "").strip().lower()
 
-        if not username:
-            return jsonify({"success": False, "error": "O usuário (login) é obrigatório."}), 400
+        username_error = validate_username(username)
+        if username_error:
+            return jsonify({"success": False, "error": username_error}), 400
         if role not in VALID_ROLES:
             return jsonify({"success": False, "error": "Tipo inválido. Use 'admin' ou 'porteiro'."}), 400
         if len(password) < MIN_PASSWORD_LENGTH:

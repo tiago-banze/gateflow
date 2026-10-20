@@ -89,60 +89,74 @@ def _generate_guest_qr_image(guest_id):
     return buffer
 
 
-def _draw_card(c, x, y, card_width, card_height, guest, qr_image_path):
-    """Desenha um único cartão de convite (nome + cargo + QR Code) no PDF."""
-    # Moldura do cartão
+_CATEGORY_COLORS = {
+    "vip": "#B8860B", "imprensa": "#1F6FB2", "staff": "#2E7D32", "orador": "#7B1FA2",
+    "artista": "#C2185B", "patrocinador": "#00796B",
+}
+
+
+def _event_date_label(event):
+    raw = (event or {}).get("event_date") or ""
+    try:
+        from datetime import datetime
+        return datetime.fromisoformat(raw).strftime("%d/%m/%Y %H:%M")
+    except (ValueError, TypeError):
+        return raw
+
+
+def _draw_card(c, x, y, card_width, card_height, guest, qr_image_path, event=None):
+    """Cartão de convite/bilhete: evento, data, local, convidado, categoria, grupo, pessoas e QR Code."""
+    event = event or {}
     c.setStrokeColor(PRIMARY_COLOR)
     c.setLineWidth(1)
     c.roundRect(x, y, card_width, card_height, 4 * mm, stroke=1, fill=0)
 
     padding = 5 * mm
     qr_size = card_height - (2 * padding)
-
-    # QR Code do lado esquerdo do cartão -- gerado em memória a partir
-    # do guest_id (ver _generate_guest_qr_image acima), nunca lido de
-    # disco: assim funciona igual em desenvolvimento local e em produção
-    # serverless, e nunca sai "faltando" por um arquivo que não existe
-    # mais nesta instância.
     try:
-        qr_buffer = _generate_guest_qr_image(guest["id"])
-        qr_img = ImageReader(qr_buffer)
-        c.drawImage(
-            qr_img,
-            x + padding,
-            y + padding,
-            width=qr_size,
-            height=qr_size,
-            preserveAspectRatio=True,
-        )
+        c.drawImage(ImageReader(_generate_guest_qr_image(guest["id"])), x + padding, y + padding,
+                    width=qr_size, height=qr_size, preserveAspectRatio=True)
     except Exception:
-        # Se a imagem falhar por qualquer motivo, seguimos sem travar o PDF inteiro
-        pass
+        pass  # nunca deixa um QR falhado travar o PDF inteiro
 
-    # Textos à direita do QR Code
     text_x = x + padding + qr_size + (4 * mm)
     text_max_width = card_width - (text_x - x) - padding
+    top = y + card_height - padding
+
+    c.setFillColor(PRIMARY_COLOR)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(text_x, top - 8, (event.get("name") or "")[:44].upper())
+    c.setFillColor(colors.HexColor("#555555"))
+    c.setFont("Helvetica", 8)
+    meta = " · ".join(p for p in (_event_date_label(event), (event.get("location") or "")) if p)
+    for i, line in enumerate(_wrap_text(c, meta, "Helvetica", 8, text_max_width)[:2]):
+        c.drawString(text_x, top - 19 - i * 9, line)
 
     c.setFillColor(PRIMARY_COLOR)
     c.setFont("Helvetica-Bold", 12)
-    name_lines = _wrap_text(c, guest["full_name"], "Helvetica-Bold", 12, text_max_width)
-    text_y = y + card_height - padding - 12
-    for line in name_lines[:2]:
+    text_y = top - 46
+    for line in _wrap_text(c, guest["full_name"], "Helvetica-Bold", 12, text_max_width)[:2]:
         c.drawString(text_x, text_y, line)
         text_y -= 14
 
-    # Mesa: destacada em negrito, logo abaixo do nome, para ser fácil de
-    # ler rapidamente na entrada (casamentos, jantares de gala, etc.)
-    text_y -= 3
-    c.setFillColor(PRIMARY_COLOR)
-    c.setFont("Helvetica-Bold", 11)
+    group_name = event.get("group_label") or "Mesa"
     table_label = guest.get("table_number") or config.DEFAULT_TABLE_LABEL
-    c.drawString(text_x, text_y, f"Mesa: {table_label}")
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(text_x, text_y - 2, f"{group_name}: {table_label}")
 
-    c.setFillColor(colors.HexColor("#555555"))
-    c.setFont("Helvetica", 10)
-    role_text = guest.get("role") or "Convidado"
-    c.drawString(text_x, y + padding + 4, role_text)
+    extra = guest.get("companions_allowed") or 0
+    if extra:
+        c.setFont("Helvetica", 9)
+        c.setFillColor(colors.HexColor("#555555"))
+        c.drawString(text_x, text_y - 14, f"Válido para {1 + int(extra)} pessoas")
+
+    role_text = (guest.get("role") or "Convidado").strip()
+    c.setFillColor(colors.HexColor(_CATEGORY_COLORS.get(role_text.lower(), "#555555")))
+    badge_w = min(c.stringWidth(role_text.upper()[:24], "Helvetica-Bold", 8) + 4 * mm, text_max_width)
+    c.roundRect(text_x, y + padding, badge_w, 5 * mm, 2 * mm, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(text_x + 2 * mm, y + padding + 1.6 * mm, role_text.upper()[:24])
 
 
 def _wrap_text(c, text, font_name, font_size, max_width):
@@ -203,7 +217,7 @@ def generate_invites_pdf(event, guests):
                         - row * CARD_SPACING
                     )
                     qr_path = guest.get("qr_code_path")
-                    _draw_card(c, x, y, card_width, card_height, guest, qr_path)
+                    _draw_card(c, x, y, card_width, card_height, guest, qr_path, event)
                     guest_index += 1
 
             _draw_signature_footer(c, page_width, MARGIN)

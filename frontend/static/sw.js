@@ -19,11 +19,14 @@
  *     não pelo Service Worker.
  */
 
-const CACHE_NAME = "gateflow-checkin-shell-v2";
+const CACHE_NAME = "gateflow-checkin-shell-v3";
 
 const APP_SHELL_URLS = [
   "/static/css/style.css",
   "/static/css/footer.css",
+  "/static/css/appshell.css",
+  "/static/css/events.css",
+  "/static/js/shell.js",
   "/static/js/common.js",
   "/static/js/checkin.js",
   "/static/js/offline_checkin.js",

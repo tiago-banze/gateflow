@@ -7,6 +7,8 @@
 const EVENT_ID = document.body.getAttribute("data-event-id");
 const EVENT_ENDED = document.body.getAttribute("data-event-ended") === "true";
 const POLL_INTERVAL_MS = 10000;
+const GROUP_LABEL = document.body.getAttribute("data-group-label") || "Mesa";
+const AUTO_SEND = document.body.getAttribute("data-auto-send") === "1";
 
 const state = { guests: [], rsvp: null, stats: null, channels: null, filter: "all", search: "", actionGuest: null };
 let pollTimer = null;
@@ -160,8 +162,9 @@ function renderGuests() {
         <div class="guest-sub">
           ${RSVP_BADGE[g.rsvp_status] || RSVP_BADGE.pending}
           ${g.checked_in ? `<span class="badge badge-success">${icon("check", 13)} Presente</span>` : ""}
-          ${g.table_number && g.table_number !== "Não definida" ? `<span>Mesa ${escapeHtml(g.table_number.replace(/^mesa\s*/i, ""))}</span>` : ""}
-          ${g.rsvp_status === "confirmed" && g.companions_confirmed ? `<span>+${g.companions_confirmed}</span>` : ""}
+          ${g.table_number && g.table_number !== "Não definida" ? `<span>${escapeHtml(g.table_number.toLowerCase().startsWith(GROUP_LABEL.toLowerCase()) ? g.table_number : `${GROUP_LABEL} ${g.table_number}`)}</span>` : ""}
+          ${g.role && g.role !== "Convidado" ? `<span class="badge badge-brand">${escapeHtml(g.role)}</span>` : ""}
+          ${g.rsvp_status === "confirmed" && g.companions_confirmed ? `<span>+${g.companions_confirmed}</span>` : (g.companions_allowed ? `<span>até +${g.companions_allowed}</span>` : "")}
         </div>
         ${deliveryNote(g)}
       </div>
@@ -220,6 +223,47 @@ function renderSendCards() {
   else if (!inv.dataset.busy && state.channels) inv.disabled = !Object.values(state.channels).some((c) => c.configured) || EVENT_ENDED;
   if (!rem.dataset.busy && !pendingReminders) rem.disabled = true;
   else if (!rem.dataset.busy && state.channels) rem.disabled = !Object.values(state.channels).some((c) => c.configured) || EVENT_ENDED;
+}
+
+let pendingSendKind = null;
+
+/** Mostra o que vai ser enviado (quem, por que canal, texto exato) e só envia depois de confirmar. */
+async function openSendPreview(kind) {
+  const body = document.getElementById("send-preview-body");
+  const confirmBtn = document.getElementById("btn-send-confirm");
+  const isInvite = kind === "invite";
+  pendingSendKind = null;
+  confirmBtn.disabled = true;
+  document.getElementById("send-preview-title").textContent = isInvite ? "Confirmar envio dos convites" : "Confirmar envio dos lembretes";
+  body.innerHTML = '<p class="field-hint"><span class="spinner"></span> A preparar…</p>';
+  openSheet("send-preview-sheet");
+
+  const res = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/send-preview?kind=${kind}`);
+  if (!res.success) { body.innerHTML = `<div class="notice is-warning">${icon("alert")}<div>${escapeHtml(res.error || "Erro ao preparar.")}</div></div>`; return; }
+  const d = res.data;
+  if (!d.total_pending) { body.innerHTML = `<div class="notice is-info">${icon("info")}<div>Ninguém por enviar neste momento.</div></div>`; return; }
+  if (!d.any_channel) {
+    body.innerHTML = `<div class="notice is-warning">${icon("alert")}<div><strong>Nenhum canal de envio configurado.</strong> Configure WhatsApp, SMS ou e-mail no servidor (ver README) para enviar.</div></div>`;
+    return;
+  }
+  const rows = [];
+  if (d.by_channel.phone) rows.push(`<li>${icon("phone", 15)} <strong>${d.by_channel.phone}</strong> por WhatsApp / SMS</li>`);
+  if (d.by_channel.email) rows.push(`<li>${icon("mail", 15)} <strong>${d.by_channel.email}</strong> por e-mail</li>`);
+  body.innerHTML = `
+    <p style="margin:0 0 10px"><strong>${d.total_pending}</strong> convidado(s) vão receber ${isInvite ? "o convite" : "o lembrete"}:</p>
+    <ul class="preview-list">${rows.join("")}</ul>
+    <div class="msg-preview"><small>Mensagem (exemplo)</small><p>${escapeHtml(d.sample.text)}</p><small>Assunto do e-mail: ${escapeHtml(d.sample.email_subject)}</small></div>
+    ${d.no_contact_count ? `<div class="notice is-warning" style="margin-top:12px">${icon("alert")}<div><strong>${d.no_contact_count}</strong> sem telemóvel nem e-mail (não recebem): ${escapeHtml(d.no_contact.slice(0, 5).join(", "))}${d.no_contact_count > 5 ? "…" : ""}</div></div>` : ""}
+    <details class="recipients"><summary>Ver destinatários (${d.recipients.length})</summary><p>${d.recipients.map(escapeHtml).join(" · ")}</p></details>`;
+  pendingSendKind = kind;
+  confirmBtn.disabled = false;
+}
+
+function offerAutoSend() {
+  if (!AUTO_SEND || EVENT_ENDED) return;
+  const banner = document.getElementById("add-pending-banner");
+  document.getElementById("add-pending-text").textContent = "Convidados novos prontos para convidar.";
+  banner.classList.remove("hidden");
 }
 
 /**
@@ -284,8 +328,14 @@ async function runBulkSend(kind) {
 
 function bindSending() {
   loadChannels();
-  document.getElementById("btn-send-invites-bulk").addEventListener("click", () => runBulkSend("invite"));
-  document.getElementById("btn-send-reminders-bulk").addEventListener("click", () => runBulkSend("reminder"));
+  document.getElementById("btn-send-invites-bulk").addEventListener("click", () => openSendPreview("invite"));
+  document.getElementById("btn-send-reminders-bulk").addEventListener("click", () => openSendPreview("reminder"));
+  document.getElementById("btn-review-send").addEventListener("click", () => { closeSheet("add-guests-sheet"); openSendPreview("invite"); });
+  document.getElementById("btn-send-confirm").addEventListener("click", () => {
+    const kind = pendingSendKind;
+    closeSheet("send-preview-sheet");
+    if (kind) { if (window.gotoTab) window.gotoTab("convites"); runBulkSend(kind); }
+  });
 
   const sendOne = async (kind) => {
     const g = state.actionGuest;
@@ -328,8 +378,12 @@ function bindAddSheet() {
 }
 
 function bindForms() {
-  document.getElementById("btn-download-template").addEventListener("click", downloadTemplate);
-  document.getElementById("btn-import").addEventListener("click", handleImportGuests);
+  document.getElementById("btn-download-template").addEventListener("click", () => downloadTemplate("xlsx"));
+  document.getElementById("btn-download-template-csv").addEventListener("click", () => downloadTemplate("csv"));
+  document.getElementById("btn-import-preview").addEventListener("click", () => runImport(true));
+  document.getElementById("btn-import").addEventListener("click", () => runImport(false));
+  ["input-xlsx", "import-paste"].forEach((id) => document.getElementById(id).addEventListener("input", resetImportPreview));
+  document.getElementById("input-xlsx").addEventListener("change", resetImportPreview);
   document.getElementById("form-new-guest").addEventListener("submit", handleCreateGuestManual);
   document.getElementById("form-courtesy").addEventListener("submit", handleIssueCourtesy);
   document.getElementById("form-rsvp-settings").addEventListener("submit", handleSaveRsvpSettings);
@@ -345,6 +399,9 @@ async function handleSaveEvent(e) {
     location: document.getElementById("edit-location").value.trim(),
     organizer_display_name: document.getElementById("edit-organizer").value.trim(),
     description: document.getElementById("edit-description").value.trim(),
+    event_type: document.getElementById("edit-type").value,
+    group_label: document.getElementById("edit-group-label").value,
+    auto_send_invites: document.getElementById("edit-auto-send").checked,
   };
   if (!payload.name || !payload.event_date || !payload.location || !payload.organizer_display_name) {
     showToast("Preencha nome, data, local e organizador.", "error");
@@ -405,6 +462,7 @@ async function handleCreateGuestManual(e) {
   document.getElementById("form-new-guest").reset();
   document.getElementById("guest-companions").value = 0;
   document.getElementById("guest-name").focus();
+  offerAutoSend();
   refreshAll(); // a folha fica aberta para adicionar o seguinte
 }
 
@@ -427,35 +485,73 @@ async function handleIssueCourtesy(e) {
   refreshAll();
 }
 
-async function handleImportGuests() {
-  const fileInput = document.getElementById("input-xlsx");
-  const file = fileInput.files[0];
-  if (!file) { showToast("Escolha um ficheiro .xlsx.", "error"); return; }
-  const btn = document.getElementById("btn-import");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> A importar…';
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await apiRequest(`/api/organizador/events/${EVENT_ID}/import`, { method: "POST", body: formData });
-  btn.disabled = false;
-  btn.innerHTML = `${icon("upload")} Importar`;
-  if (!res.success) { showToast(res.error || "Erro ao importar.", "error"); return; }
-  showToast(res.data.summary, "success", 5000);
-  fileInput.value = "";
-  closeSheet("add-guests-sheet");
-  refreshAll();
-  if (window.gotoTab) window.gotoTab("convidados");
+function resetImportPreview() {
+  document.getElementById("import-preview").innerHTML = "";
+  document.getElementById("btn-import").disabled = true;
 }
 
-async function downloadTemplate() {
+/** preview=true só simula (nada é gravado); preview=false grava. */
+async function runImport(preview) {
+  const file = document.getElementById("input-xlsx").files[0];
+  const text = document.getElementById("import-paste").value;
+  if (!file && !text.trim()) { showToast("Escolha um ficheiro ou cole os dados.", "error"); return; }
+  const btn = document.getElementById(preview ? "btn-import-preview" : "btn-import");
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> A processar…';
+
+  const url = `/api/organizador/events/${EVENT_ID}/import${preview ? "?preview=1" : ""}`;
+  let options;
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    options = { method: "POST", body: formData };
+  } else {
+    options = { method: "POST", body: JSON.stringify({ text, preview }) };
+  }
+  const res = await apiRequest(url, options);
+  btn.innerHTML = original;
+  btn.disabled = false;
+  const box = document.getElementById("import-preview");
+
+  if (!res.success) {
+    box.innerHTML = `<div class="notice is-warning">${icon("alert")}<div>${escapeHtml(res.error || "Erro ao importar.")}</div></div>`;
+    document.getElementById("btn-import").disabled = true;
+    return;
+  }
+  if (preview) {
+    const d = res.data;
+    const issues = (d.issues || []).slice(0, 6).map((i) => `<li>${escapeHtml(i)}</li>`).join("");
+    box.innerHTML = `
+      <div class="preview-counts">
+        <span><strong>${d.new_count}</strong> novos</span>
+        <span><strong>${d.updated_count}</strong> a atualizar</span>
+        <span><strong>${d.unchanged_count}</strong> sem alterações</span>
+      </div>
+      ${issues ? `<ul class="preview-issues">${issues}</ul>` : ""}
+      <details class="recipients"><summary>Ver lista (${d.rows.length})</summary><p>${d.rows.map((r) => `${escapeHtml(r.name)} <em>(${escapeHtml(r.action)})</em>`).join(" · ")}</p></details>`;
+    document.getElementById("btn-import").disabled = !(d.new_count || d.updated_count);
+    return;
+  }
+  showToast(res.data.summary, "success", 5000);
+  document.getElementById("input-xlsx").value = "";
+  document.getElementById("import-paste").value = "";
+  resetImportPreview();
+  closeSheet("add-guests-sheet");
+  await refreshAll();
+  if (window.gotoTab) window.gotoTab("convidados");
+  if (AUTO_SEND && res.data.imported_count) openSendPreview("invite");
+}
+
+async function downloadTemplate(kind = "xlsx") {
   try {
-    const response = await fetch(`${window.location.origin}/api/events/template-xlsx`, { credentials: "same-origin" });
+    const response = await fetch(`${window.location.origin}/api/events/template-${kind}`, { credentials: "same-origin" });
     if (!response.ok) { showToast("Erro ao baixar o modelo.", "error"); return; }
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "modelo_convidados_gateflow.xlsx";
+    a.download = `modelo_convidados_gateflow.${kind}`;
     document.body.appendChild(a);
     a.click();
     a.remove();

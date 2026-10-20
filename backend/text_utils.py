@@ -67,3 +67,26 @@ def slugify_filename(text, fallback="arquivo"):
     slug = slug.strip("_")
 
     return slug or fallback
+
+
+# --------------------------------------------------------------------------
+# Nomes de utilizador: uma única regra para guardar, validar e comparar.
+# --------------------------------------------------------------------------
+
+_USERNAME_OK = re.compile(r"^[\w.\-@]{3,40}$")
+
+
+def normalize_username(raw):
+    """Limpa (espaços/Unicode) e põe em minúsculas. Usar SEMPRE ao guardar e ao comparar."""
+    text = unicodedata.normalize("NFKC", str(raw or ""))
+    return text.strip().lower()
+
+
+def validate_username(raw):
+    """Devolve mensagem de erro, ou None se válido. Só para contas NOVAS (o login não a aplica)."""
+    value = normalize_username(raw)
+    if not value:
+        return "O usuário (login) é obrigatório e não pode ser só espaços."
+    if not _USERNAME_OK.match(value):
+        return "O usuário deve ter 3 a 40 caracteres: letras, números, ponto, hífen, _ ou @ (sem espaços)."
+    return None

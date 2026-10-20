@@ -131,10 +131,10 @@
         </div>
       </div>
       {% endif %}
-      {% if guest.table_name %}
+      {% if guest.table_number and guest.table_number != "Não definida" %}
       <div class="rsvp-detail-row">
         {{ icon('grid', 40, 'icon') }}
-        <div><div class="label">A sua mesa</div><div class="value">{{ guest.table_name }}</div></div>
+        <div><div class="label">A sua {{ (guest.group_label or "Mesa")|lower }}</div><div class="value">{{ guest.table_number }}</div></div>
       </div>
       {% endif %}
 

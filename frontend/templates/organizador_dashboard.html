@@ -12,19 +12,6 @@
     <p>Gira os seus eventos e convidados num só lugar.</p>
   </div>
 
-  <div id="next-event-card" class="next-event-card hidden">
-    <div class="next-event-label">Próximo evento</div>
-    <div class="next-event-name" id="next-event-name"></div>
-    <div class="next-event-meta" id="next-event-meta"></div>
-    <div class="countdown-grid" id="next-event-countdown">
-      <div class="countdown-unit"><div class="countdown-value" id="cd-days">--</div><div class="countdown-label">Dias</div></div>
-      <div class="countdown-unit"><div class="countdown-value" id="cd-hours">--</div><div class="countdown-label">Horas</div></div>
-      <div class="countdown-unit"><div class="countdown-value" id="cd-minutes">--</div><div class="countdown-label">Min</div></div>
-      <div class="countdown-unit"><div class="countdown-value" id="cd-seconds">--</div><div class="countdown-label">Seg</div></div>
-    </div>
-    <div class="next-event-actions" id="next-event-actions"></div>
-  </div>
-
   <div class="action-grid">
     <a class="action-tile is-primary" href="{{ url_for('page_organizador_event_new') }}">
       <span class="action-tile-icon">{{ icon('plus', 22) }}</span>
@@ -42,6 +29,19 @@
       <span class="action-tile-icon">{{ icon('user-plus', 22) }}</span>
       <span><strong>Convidados</strong><small id="tile-guests-sub">A carregar…</small></span>
     </a>
+  </div>
+
+  <div id="next-event-card" class="next-event-card hidden">
+    <div class="next-event-label">Próximo evento</div>
+    <div class="next-event-name" id="next-event-name"></div>
+    <div class="next-event-meta" id="next-event-meta"></div>
+    <div class="countdown-grid" id="next-event-countdown">
+      <div class="countdown-unit"><div class="countdown-value" id="cd-days">--</div><div class="countdown-label">Dias</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-hours">--</div><div class="countdown-label">Horas</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-minutes">--</div><div class="countdown-label">Min</div></div>
+      <div class="countdown-unit"><div class="countdown-value" id="cd-seconds">--</div><div class="countdown-label">Seg</div></div>
+    </div>
+    <div class="next-event-actions" id="next-event-actions"></div>
   </div>
 
   <div class="section-title">

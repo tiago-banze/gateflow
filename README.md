@@ -46,6 +46,23 @@ assinatura `WHATSAPP_APP_SECRET`.
 Outras variáveis: `GATEFLOW_PUBLIC_BASE_URL` (URL público usado nos links),
 `GATEFLOW_TZ_OFFSET_HOURS` (por defeito 2, Maputo), `RATELIMIT_STORAGE_URI`.
 
+## Lista de convidados
+Importe por **.xlsx**, **.csv** ou **colando** do Excel; há modelos para descarregar. Colunas:
+`Nome Completo, Email, Telefone, Categoria, Grupo, Acompanhantes` (só o nome é obrigatório).
+Mostra uma **pré-visualização** (novos / a atualizar / sem alterações) antes de gravar; quem já
+existe (mesmo e-mail, ou nome+telefone) é **atualizado**, nunca duplicado. Segurança: só .xlsx/.csv,
+máx. 2 MB e 2000 linhas, conteúdo verificado (não só a extensão), sem macros/ligações externas,
+fórmulas neutralizadas, nada é gravado em disco.
+
+## Portaria
+- **Câmara contínua:** abre uma vez e valida QR após QR; o mesmo código é ignorado durante 4 s.
+- **Leitor USB/Bluetooth:** ligue um leitor 2D em modo "teclado" (HID, sufixo Enter, por defeito);
+  basta ter a página aberta. Precisa de leitor **2D/QR** (os de laser 1D não leem QR). Exemplos:
+  Zebra DS2208, Honeywell Voyager 1450g, Netum/Eyoyo 2D sem fios.
+- Cada convidado pode cobrir várias pessoas (acompanhantes): o ecrã mostra "3 pessoas".
+- "Mesa" é configurável por evento (Mesa, Zona, Sector, Categoria, Sala, Fila); a categoria do
+  QR (VIP, Imprensa, Staff…) aparece no bilhete PDF e na leitura.
+
 ## Segurança
 Cookies de sessão HttpOnly/SameSite, verificação de Origin em pedidos de
 escrita, cabeçalhos de segurança, webhook com HMAC, isolamento por

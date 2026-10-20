@@ -5,7 +5,7 @@
   {% include "_head.html" %}
   <title>{{ event.name }} · GateFlow</title>
 </head>
-<body data-event-id="{{ event.id }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
+<body data-event-id="{{ event.id }}" data-group-label="{{ event.group_label or 'Mesa' }}" data-auto-send="{{ '1' if event.auto_send_invites else '0' }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
 {% call app_shell(event.name, active='events', back=url_for('page_organizador_events'), back_label='Eventos') %}
 
   {% if event.status.code == 'encerrado' %}
@@ -124,6 +124,13 @@
         <input type="text" id="edit-location" required maxlength="250" value="{{ event.location or '' }}" />
         <label for="edit-organizer">Organizador / empresa *</label>
         <input type="text" id="edit-organizer" required maxlength="150" value="{{ event.organizer_display_name or '' }}" />
+        <div class="grid-2 form-grid">
+          <div><label for="edit-type">Tipo de evento</label>
+            <select id="edit-type">{% for t in ['Casamento','Aniversário','Conferência','Corporativo','Festa','Cerimónia','Outro'] %}<option value="{{ t }}"{% if (event.event_type or 'Outro') == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+          <div><label for="edit-group-label">Agrupar convidados por</label>
+            <select id="edit-group-label">{% for t in ['Mesa','Zona','Sector','Categoria','Sala','Fila'] %}<option value="{{ t }}"{% if (event.group_label or 'Mesa') == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+        </div>
+        <label class="check-row"><input type="checkbox" id="edit-auto-send"{% if event.auto_send_invites %} checked{% endif %} /> <span>Propor o envio dos convites assim que adicionar convidados (pede sempre confirmação)</span></label>
         <label for="edit-description">Descrição</label>
         <textarea id="edit-description" maxlength="2000">{{ event.description or '' }}</textarea>
         <div class="form-actions"><button type="submit" class="btn btn-primary" id="btn-save-edit">{{ icon('check') }} Guardar alterações</button></div>
@@ -161,11 +168,13 @@
         <label for="guest-email">E-mail</label>
         <input type="email" id="guest-email" autocomplete="off" />
         <div class="grid-2 form-grid" style="margin-top:0">
-          <div><label for="guest-table">Mesa</label><input type="text" id="guest-table" placeholder="Ex: Mesa 5" /></div>
+          <div><label for="guest-table">{{ event.group_label or 'Mesa' }}</label><input type="text" id="guest-table" maxlength="40" placeholder="Ex: {{ event.group_label or 'Mesa' }} 5" /></div>
           <div><label for="guest-companions">Acompanhantes</label><input type="number" id="guest-companions" min="0" inputmode="numeric" value="0" /></div>
         </div>
-        <label for="guest-role">Tipo <span class="text-muted">(opcional)</span></label>
-        <input type="text" id="guest-role" placeholder="Ex: Família, Amigo, Imprensa…" />
+        <label for="guest-role">Categoria do QR <span class="text-muted">(opcional)</span></label>
+        <input type="text" id="guest-role" maxlength="40" list="role-suggestions" placeholder="Ex: VIP, Imprensa, Família…" />
+        <datalist id="role-suggestions"><option value="Convidado"><option value="VIP"><option value="Imprensa"><option value="Staff"><option value="Orador"><option value="Artista"><option value="Patrocinador"><option value="Família"></datalist>
+        <div class="notice is-info hidden" id="add-pending-banner" style="margin-top:12px">{{ icon('send') }}<div><span id="add-pending-text"></span> <button type="button" class="btn btn-secondary btn-sm" id="btn-review-send">Rever e enviar</button></div></div>
         <div class="sheet-footer">
           <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
           <button type="submit" class="btn btn-primary" id="btn-save-guest">{{ icon('plus') }} Adicionar</button>
@@ -180,7 +189,7 @@
         <input type="email" id="courtesy-email" autocomplete="off" />
         <label for="courtesy-phone">Telemóvel</label>
         <input type="tel" id="courtesy-phone" inputmode="tel" autocomplete="off" />
-        <label for="courtesy-table">Mesa</label>
+        <label for="courtesy-table">{{ event.group_label or 'Mesa' }}</label>
         <input type="text" id="courtesy-table" />
         <div class="sheet-footer">
           <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
@@ -189,18 +198,36 @@
       </form>
 
       <div data-mode-panel="import" hidden>
-        <p class="field-hint" style="margin-top:0">Colunas: <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong> (Mesa é opcional).</p>
-        <button class="btn btn-secondary btn-block" id="btn-download-template" type="button">{{ icon('download') }} Baixar modelo (.xlsx)</button>
-        <div class="upload-drop"><input type="file" id="input-xlsx" accept=".xlsx" aria-label="Ficheiro .xlsx" /></div>
-        <div class="sheet-footer">
-          <button type="button" class="btn btn-ghost" data-sheet-close>Fechar</button>
-          <button class="btn btn-primary" id="btn-import" type="button">{{ icon('upload') }} Importar</button>
+        <p class="field-hint" style="margin-top:0">Colunas: <strong>Nome Completo, Email, Telefone, Categoria, {{ event.group_label or 'Grupo' }}, Acompanhantes</strong>. Só o nome é obrigatório. Quem já existe é atualizado, não duplicado.</p>
+        <div class="btn-pair">
+          <button class="btn btn-secondary" id="btn-download-template-csv" type="button">{{ icon('download') }} Modelo .csv</button>
+          <button class="btn btn-secondary" id="btn-download-template" type="button">{{ icon('download') }} Modelo .xlsx</button>
+        </div>
+        <label for="input-xlsx">Ficheiro .xlsx ou .csv</label>
+        <div class="upload-drop"><input type="file" id="input-xlsx" accept=".xlsx,.csv" aria-label="Ficheiro .xlsx ou .csv" /></div>
+        <label for="import-paste">…ou cole aqui os dados (do Excel ou de uma lista)</label>
+        <textarea id="import-paste" rows="4" maxlength="200000" placeholder="Nome&#9;Email&#9;Telefone&#9;Categoria&#9;Grupo&#9;Acompanhantes"></textarea>
+        <div id="import-preview" class="import-preview" aria-live="polite"></div>
+        <div class="btn-pair import-actions">
+          <button class="btn btn-secondary" id="btn-import-preview" type="button">{{ icon('eye') }} Pré-visualizar</button>
+          <button class="btn btn-primary" id="btn-import" type="button" disabled>{{ icon('upload') }} Confirmar</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ====================== FOLHA: AÇÕES DO CONVIDADO ====================== -->
+  <div class="modal-overlay hidden" id="send-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="send-preview-title" data-sheet>
+    <div class="modal-box">
+      <div class="sheet-head"><h3 id="send-preview-title">Confirmar envio</h3><button class="icon-btn" type="button" data-sheet-close aria-label="Fechar">{{ icon('x') }}</button></div>
+      <div id="send-preview-body"></div>
+      <div class="sheet-footer">
+        <button type="button" class="btn btn-ghost" data-sheet-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-send-confirm">{{ icon('send') }} Enviar agora</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="guest-actions-sheet" role="dialog" aria-modal="true" aria-labelledby="guest-actions-title" data-sheet>
     <div class="modal-box">
       <div class="sheet-head"><h3 id="guest-actions-title">Convidado</h3><button class="icon-btn" type="button" data-sheet-close aria-label="Fechar">{{ icon('x') }}</button></div>

@@ -7,7 +7,7 @@
   <!-- defer: não bloqueia a primeira renderização da página -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 </head>
-<body data-event-id="{{ event.id }}" data-event-status="{{ event.status.code }}">
+<body data-event-id="{{ event.id }}" data-event-status="{{ event.status.code }}" data-group-label="{{ event.group_label or 'Mesa' }}">
 {% call app_shell('Check-in', active='checkin', back=url_for('page_checkin'), back_label='Eventos') %}
 
     <div class="page-header">
@@ -43,6 +43,8 @@
       <div id="live-stats-chart" style="margin-top:16px;"></div>
     </div>
 
+    <div class="reader-hint" id="reader-hint">{{ icon('zap', 18) }}<span><strong>Leitor USB / Bluetooth pronto.</strong> Ligue o leitor e passe o QR Code: a entrada é registada sozinha.</span></div>
+
     <div class="search-bar">
       <input type="search" id="search-input" placeholder="Procurar convidado pelo nome…" aria-label="Procurar convidado pelo nome" autocomplete="off" />
     </div>
@@ -53,8 +55,8 @@
         <thead>
           <tr>
             <th>Nome</th>
-            <th>Cargo / Tipo</th>
-            <th>Mesa</th>
+            <th>Categoria</th>
+            <th>{{ event.group_label or 'Mesa' }}</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -79,9 +81,10 @@
         <button class="icon-btn" id="btn-close-scanner" type="button" aria-label="Fechar">{{ icon('x') }}</button>
       </div>
       <div id="qr-reader"></div>
-      <p class="field-hint" style="margin-top:12px;">
-        Aponte a câmara para o QR Code impresso ou exibido no telemóvel do convidado.
+      <p class="field-hint scanner-hint">
+        {{ icon('scan', 16) }} Modo contínuo: a câmara fica aberta e cada QR Code é validado sozinho. Feche quando terminar.
       </p>
+      <button class="btn btn-secondary btn-block" type="button" id="btn-finish-scanner">{{ icon('check') }} Concluir leitura</button>
     </div>
   </div>
 

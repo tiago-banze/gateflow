@@ -17,6 +17,21 @@ TZ_OFFSET_HOURS = float(os.environ.get("GATEFLOW_TZ_OFFSET_HOURS", "2"))
 def local_today():
     return (datetime.utcnow() + timedelta(hours=TZ_OFFSET_HOURS)).date()
 
+def utc_iso_to_local(iso_value):
+    """Converte um timestamp UTC guardado na BD para a hora local do evento (Moçambique)."""
+    if not iso_value:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso_value).replace("Z", "")) + timedelta(hours=TZ_OFFSET_HOURS)
+    except ValueError:
+        return None
+
+
+def local_time_label(iso_value):
+    local = utc_iso_to_local(iso_value)
+    return local.strftime("%d/%m/%Y %H:%M") if local else ""
+
+
 STATUS_PROXIMO = "proximo"
 STATUS_ANDAMENTO = "andamento"
 STATUS_ENCERRADO = "encerrado"

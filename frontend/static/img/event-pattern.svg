@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none">
+  <g stroke="#E3AC3F" stroke-width="2" stroke-linecap="round" opacity=".9">
+    <path d="M40 60l6 12 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z" fill="#E3AC3F" fill-opacity=".35"/>
+    <path d="M290 250l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z" fill="#E3AC3F" fill-opacity=".35"/>
+  </g>
+  <g stroke="#74C7A5" stroke-width="2" opacity=".9">
+    <circle cx="150" cy="40" r="9"/>
+    <circle cx="320" cy="90" r="6" fill="#74C7A5" fill-opacity=".4"/>
+    <circle cx="70" cy="250" r="12"/>
+    <circle cx="210" cy="320" r="7" fill="#74C7A5" fill-opacity=".4"/>
+  </g>
+  <g stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".7">
+    <path d="M200 120l14 14M214 120l-14 14"/>
+    <path d="M20 160l10 10M30 160l-10 10"/>
+    <path d="M110 190c10-12 20 12 30 0s20 12 30 0"/>
+    <path d="M250 30c8-10 16 10 24 0s16 10 24 0"/>
+    <path d="M300 330c8-10 16 10 24 0"/>
+  </g>
+  <g opacity=".85">
+    <path d="M110 300l22-14 6 10-22 14z" fill="#E3AC3F" fill-opacity=".5"/>
+    <path d="M250 160l18-18 8 8-18 18z" fill="#74C7A5" fill-opacity=".5"/>
+    <rect x="330" y="200" width="14" height="14" rx="3" transform="rotate(20 337 207)" fill="#FFFFFF" fill-opacity=".35"/>
+  </g>
+</svg>

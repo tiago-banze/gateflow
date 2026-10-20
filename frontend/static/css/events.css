@@ -1,0 +1,211 @@
+/* ==========================================================================
+   events.css — "cara de eventos" + componentes de importação/envio/leitura.
+   Ficheiro carregado depois de style.css e appshell.css.
+   ========================================================================== */
+
+/* 1. Atmosfera de evento ---------------------------------------------------
+   Padrão decorativo (confetes, estrelas, serpentinas) sobre os blocos de
+   marca. Fica discreto (opacidade baixa) e nunca atrás de texto pequeno. */
+.event-hero,
+.next-event-card,
+.auth-aside,
+.lp-hero,
+.lp-cta-inner {
+  position: relative;
+  isolation: isolate;
+}
+.event-hero::before,
+.next-event-card::before,
+.auth-aside::before,
+.lp-hero::before,
+.lp-cta-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("../img/event-pattern.svg") center / 300px 300px repeat;
+  opacity: 0.16;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.25) 70%, transparent 100%);
+  mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.25) 70%, transparent 100%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .event-hero::before,
+  .next-event-card::before { animation: gf-drift 60s linear infinite; }
+}
+@keyframes gf-drift { to { background-position: 300px 300px; } }
+
+/* Cartões de evento: aba de bilhete (recorte lateral) e fita de cor por estado. */
+.event-item,
+.event-card {
+  position: relative;
+}
+.event-item::after,
+.event-card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+}
+
+/* Saudação com acento festivo */
+.greeting h2::after {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 18px -6px 0 -2px var(--brand-400), 34px 2px 0 -3px var(--gold);
+  vertical-align: middle;
+}
+
+/* 2. Componentes novos ------------------------------------------------------ */
+.badge-brand { background: var(--primary-soft); color: var(--primary-soft-text); }
+.party-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--info-bg); color: var(--info-text);
+  font-size: 0.75rem; font-weight: 700;
+}
+.btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.btn-pair .btn { min-height: var(--tap-min); font-size: 0.875rem; padding-inline: 10px; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 4px; font-weight: 500; line-height: 1.4; cursor: pointer; }
+.check-row input[type="checkbox"] { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--color-primary); }
+
+/* Importação */
+.import-preview { margin-top: 12px; }
+.preview-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.preview-counts span {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px; border-radius: var(--radius); background: var(--color-hover-bg);
+  border: 1px solid var(--color-border-soft); font-size: 0.75rem; color: var(--color-text-muted); text-align: center;
+}
+.preview-counts strong { font-size: 1.375rem; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.preview-issues { margin: 10px 0 0; padding-left: 18px; color: var(--warning-text); font-size: 0.8125rem; }
+details.recipients { margin-top: 12px; font-size: 0.8125rem; color: var(--text-2); }
+details.recipients summary { cursor: pointer; font-weight: 700; min-height: 32px; display: flex; align-items: center; }
+details.recipients p { margin: 6px 0 0; max-height: 140px; overflow: auto; line-height: 1.7; }
+
+/* Pré-visualização de envio */
+.preview-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.preview-list li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); background: var(--color-hover-bg); border: 1px solid var(--color-border-soft); }
+.msg-preview { padding: 12px 14px; border-radius: var(--radius); background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid var(--brand-200); }
+.msg-preview p { margin: 4px 0 8px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.msg-preview small { opacity: 0.85; }
+
+/* 3. Check-in: ritmo vertical e alinhamento uniformes ------------------------ */
+body[data-event-status] .page-header { margin-bottom: 14px; }
+body[data-event-status] .stats-bar,
+body[data-event-status] .card,
+body[data-event-status] .search-bar,
+body[data-event-status] .reader-hint,
+body[data-event-status] .offline-indicator { margin: 0 0 14px; }
+body[data-event-status] .stats-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 700px) { body[data-event-status] .stats-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+body[data-event-status] .stat-pill { min-width: 0; align-items: flex-start; justify-content: center; }
+body[data-event-status] .stat-pill .stat-value small { font-size: 0.875rem; font-weight: 700; color: var(--color-text-muted); }
+body[data-event-status] .search-bar input { width: 100%; min-height: 48px; }
+body[data-event-status] .guest-grid { grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 700px) { body[data-event-status] .guest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+body[data-event-status] .guest-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 16px; text-align: left; }
+body[data-event-status] .guest-card .guest-table { align-self: flex-start; }
+body[data-event-status] .guest-card .checkin-btn,
+body[data-event-status] .guest-card .checked-label { width: 100%; min-height: 48px; margin: 4px 0 0; }
+
+.reader-hint {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: var(--radius); background: var(--info-bg); color: var(--info-text);
+  font-size: 0.8125rem; line-height: 1.4;
+}
+.reader-hint .icon { flex: none; }
+@media (pointer: coarse) and (max-width: 700px) { .reader-hint { display: none; } }
+.scanner-hint { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+#qr-reader { width: 100%; border-radius: var(--radius); overflow: hidden; }
+
+/* Resultado da leitura (câmara e leitor): sempre visível, sobre tudo */
+.scan-banner {
+  position: fixed; z-index: 2000; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  max-width: 520px; margin: 0 auto;
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  border-radius: var(--radius-lg); color: #fff; box-shadow: var(--shadow-lg);
+  transform: translateY(-140%); opacity: 0; transition: transform 0.22s var(--ease), opacity 0.22s var(--ease);
+  pointer-events: none;
+}
+.scan-banner.is-visible { transform: none; opacity: 1; }
+.scan-banner.is-ok { background: #0A7D5C; }
+.scan-banner.is-dup { background: #B7791F; }
+.scan-banner.is-err { background: #C13B3B; }
+.scan-banner-icon { flex: none; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); display: grid; place-items: center; }
+.scan-banner-body { min-width: 0; flex: 1; }
+.scan-banner-body > strong { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.92; }
+.scan-banner-name { font-size: 1.25rem; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.scan-banner-detail { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 0.875rem; margin-top: 2px; }
+.scan-banner .badge-brand, .scan-banner .party-chip { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.scan-banner-count { flex: none; min-width: 36px; height: 36px; padding: 0 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.22); display: grid; place-items: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.checkin-confirmation-party { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 14px; font-size: 1.0625rem; color: var(--color-text); }
+@media (prefers-reduced-motion: reduce) { .scan-banner { transition: none; } }
+
+.import-actions { margin-top: 14px; position: sticky; bottom: 0; padding: 10px 0 2px; background: var(--color-card); }
+.sheet-footer { flex-wrap: wrap; }
+
+/* 4. Telemóvel: menos scroll — tudo o essencial visível sem rolar ------------ */
+@media (max-width: 699px) {
+  /* Separadores do evento: 4 colunas fixas (sem deslizar para os lados) */
+  .seg-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; overflow: visible; padding: 8px clamp(16px, 3vw, 32px); }
+  .seg-tab {
+    position: relative; flex-direction: column; justify-content: center; gap: 2px;
+    min-height: 56px; padding: 6px 2px; border-radius: 12px; font-size: 0.6875rem; line-height: 1.15; white-space: normal; text-align: center;
+  }
+  .seg-tab .icon { width: 20px; height: 20px; }
+  .seg-tab .tab-count { position: absolute; top: 3px; right: 3px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 0.6875rem; }
+
+  /* Início: ações primeiro, compactas; resto por baixo */
+  .greeting { margin-bottom: 10px; }
+  .greeting h2 { font-size: 1.375rem; }
+  .greeting p { display: none; }
+  .action-grid { gap: 8px; margin-bottom: 14px; }
+  .action-tile { min-height: 0; padding: 10px 12px; flex-direction: row; align-items: center; gap: 10px; }
+  .action-tile-icon { width: 38px; height: 38px; flex: none; }
+  .action-tile small { display: none; }
+  .action-tile strong { font-size: 0.875rem; }
+
+  .next-event-card { padding: 16px; margin-bottom: 14px; }
+  .next-event-card .countdown-grid { gap: 6px; margin: 10px 0; }
+  .next-event-card .countdown-unit { padding: 8px 4px; }
+  .next-event-card .countdown-value { font-size: 1.375rem; }
+
+  /* Evento: cabeçalho e números compactos */
+  .event-hero { padding: 16px; margin-bottom: 12px; }
+  .event-hero h2 { font-size: 1.1875rem; margin: 6px 0 8px; }
+  .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .kpi { padding: 10px 6px; }
+  .kpi-label { font-size: 0.625rem; letter-spacing: -0.01em; overflow-wrap: normal; word-break: keep-all; }
+  .kpi-value { font-size: 1.375rem; }
+}
+
+/* Check-in no telemóvel: números num só bloco compacto; lista e pesquisa logo visíveis */
+@media (max-width: 699px) {
+  body[data-event-status] #stats-bar { display: none; }
+  body[data-event-status] #live-stats-chart { display: none; }
+  body[data-event-status] #live-stats-card { padding: 12px; }
+  body[data-event-status] #live-stats-card .card-head { display: none; }
+  body[data-event-status] #live-stats-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+  body[data-event-status] #live-stats-bar .stat-pill { padding: 10px 10px; }
+  body[data-event-status] #live-stats-bar .stat-value { font-size: 1.375rem; }
+  body[data-event-status] .page-title { font-size: 1.375rem; }
+}
+@media (max-width: 699px) {
+  body[data-event-status] .guest-card { gap: 4px; padding: 12px 14px; }
+  body[data-event-status] .guest-card .guest-role { margin: 0; }
+  body[data-event-status] .guest-card .checkin-btn,
+  body[data-event-status] .guest-card .checked-label { min-height: 44px; margin-top: 6px; }
+}

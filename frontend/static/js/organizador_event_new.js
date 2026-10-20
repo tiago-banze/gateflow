@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
       location: document.getElementById("event-location").value.trim(),
       event_date: dateInput.value,
       description: document.getElementById("event-description").value.trim(),
+      event_type: document.getElementById("event-type").value,
+      group_label: document.getElementById("event-group-label").value,
     };
     if (!payload.name || !payload.organizer_display_name || !payload.location || !payload.event_date) {
       showToast("Preencha nome, data, local e organizador.", "error");

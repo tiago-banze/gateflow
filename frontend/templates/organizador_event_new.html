@@ -25,6 +25,12 @@
       <label for="event-organizer-name">Organizador / empresa *</label>
       <input type="text" id="event-organizer-name" required maxlength="150" autocomplete="organization" value="{{ current_user.full_name or '' }}" placeholder="Ex: Buffet Real Eventos" />
 
+      <div class="grid-2 form-grid">
+        <div><label for="event-type">Tipo de evento</label>
+          <select id="event-type">{% for t in ['Casamento','Aniversário','Conferência','Corporativo','Festa','Cerimónia','Outro'] %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+        <div><label for="event-group-label">Agrupar convidados por</label>
+          <select id="event-group-label">{% for t in ['Mesa','Zona','Sector','Categoria','Sala','Fila'] %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+      </div>
       <label for="event-description">Descrição <span class="text-muted">(opcional)</span></label>
       <textarea id="event-description" maxlength="2000" placeholder="Código de vestuário, notas para os convidados…"></textarea>
 

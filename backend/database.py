@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 import config
+from text_utils import normalize_username
 
 logger = logging.getLogger("gateflow.database")
 
@@ -352,6 +353,13 @@ def init_db():
         _migrate_add_column_if_missing(conn, "events", "rsvp_deadline_days", "INTEGER")
         _migrate_add_column_if_missing(conn, "events", "location_maps_url", "TEXT")
 
+        # --- Âmbito alargado: tipo de evento + rótulo do agrupamento ---
+        # `table_number` (guests) continua a ser o campo de agrupamento, mas o
+        # rótulo mostrado é configurável por evento: Mesa, Zona, Sector...
+        _migrate_add_column_if_missing(conn, "events", "event_type", "TEXT")
+        _migrate_add_column_if_missing(conn, "events", "group_label", "TEXT")
+        _migrate_add_column_if_missing(conn, "events", "auto_send_invites", "INTEGER NOT NULL DEFAULT 0")
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS rsvp_responses (
@@ -489,7 +497,12 @@ def create_event(name, location, description, event_date):
     return get_event(event_id)
 
 
-def create_event_full(organizador_id, name, organizer_display_name, location, event_date, description=""):
+EVENT_TYPES = ("Casamento", "Aniversário", "Conferência", "Corporativo", "Festa", "Cerimónia", "Outro")
+GROUP_LABELS = ("Mesa", "Zona", "Sector", "Categoria", "Sala", "Fila")
+
+
+def create_event_full(organizador_id, name, organizer_display_name, location, event_date, description="",
+                      event_type=None, group_label=None):
     """Cria um evento (lista fechada de convidados) pelo fluxo do Organizador."""
     event_id = str(uuid.uuid4())
     created_at = datetime.utcnow().isoformat()
@@ -498,13 +511,16 @@ def create_event_full(organizador_id, name, organizer_display_name, location, ev
             """
             INSERT INTO events (
                 id, name, location, description, event_date, created_at,
-                organizador_id, event_module, organizer_display_name, is_paid
+                organizador_id, event_module, organizer_display_name, is_paid,
+                event_type, group_label
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, 0)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, 0, ?, ?)
             """,
             (
                 event_id, name, location, description, event_date, created_at,
                 organizador_id, organizer_display_name,
+                event_type if event_type in EVENT_TYPES else "Outro",
+                group_label if group_label in GROUP_LABELS else "Mesa",
             ),
         )
     return get_event(event_id)
@@ -520,7 +536,8 @@ def update_event_by_organizador(event_id, organizador_id, **fields):
 
     Retorna (event: dict|None, found_and_owned: bool).
     """
-    allowed_fields = {"name", "location", "description", "event_date", "organizer_display_name"}
+    allowed_fields = {"name", "location", "description", "event_date", "organizer_display_name",
+                      "event_type", "group_label", "auto_send_invites"}
     updates = {k: v for k, v in fields.items() if k in allowed_fields and v is not None}
     if not updates:
         event = get_event(event_id)
@@ -761,6 +778,80 @@ def import_guests_with_dedup(event_id, guests):
     return created, skipped_count
 
 
+def import_guests_upsert(event_id, guests, dry_run=False):
+    """
+    Importação com ATUALIZAÇÃO de duplicados (em vez de ignorar ou duplicar).
+    Um convidado já existente (mesmo e-mail, ou mesmo nome+telefone) mantém o
+    id, o QR Code e o estado de check-in/RSVP; só os dados de contacto e
+    classificação preenchidos na lista são atualizados.
+
+    Com dry_run=True não grava nada: devolve o que ACONTECERIA (pré-visualização).
+    Devolve dict: created (lista), updated (lista), unchanged (int), preview (lista).
+    """
+    created_at = datetime.utcnow().isoformat()
+    created, updated, preview = [], [], []
+    unchanged = 0
+    seen = set()
+    with get_connection() as conn:
+        for guest in guests:
+            full_name = guest["full_name"]
+            email = guest.get("email", "")
+            phone = guest.get("phone", "")
+            key = (email.lower() if email else "", full_name.lower(), phone)
+            if key in seen:
+                unchanged += 1
+                preview.append({"name": full_name, "action": "repetido na lista"})
+                continue
+            seen.add(key)
+
+            companions = int(guest.get("companions_allowed") or 0)
+            existing = find_duplicate_guest(conn, event_id, email, full_name, phone)
+            if existing is None:
+                preview.append({"name": full_name, "action": "novo"})
+                if dry_run:
+                    continue
+                guest_id = str(uuid.uuid4())
+                conn.execute(
+                    """
+                    INSERT INTO guests
+                        (id, event_id, full_name, email, phone, role, table_number,
+                         qr_code_path, checked_in, checkin_time, checkin_by, created_at,
+                         companions_allowed)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL, ?, ?)
+                    """,
+                    (guest_id, event_id, full_name, email, phone, guest.get("role", ""),
+                     guest.get("table_number") or config.DEFAULT_TABLE_LABEL, created_at, companions),
+                )
+                created.append({"id": guest_id, "event_id": event_id, "full_name": full_name,
+                                "email": email, "phone": phone})
+                continue
+
+            changes = {}
+            for field in ("email", "phone", "role"):
+                new = guest.get(field, "")
+                if new and new != (existing.get(field) or ""):
+                    changes[field] = new
+            new_table = guest.get("table_number", "")
+            if new_table and new_table != (existing.get("table_number") or ""):
+                changes["table_number"] = new_table
+            if companions and companions != (existing.get("companions_allowed") or 0):
+                changes["companions_allowed"] = companions
+            if not changes:
+                unchanged += 1
+                preview.append({"name": full_name, "action": "sem alterações"})
+                continue
+            preview.append({"name": full_name, "action": "atualizado", "fields": sorted(changes)})
+            if dry_run:
+                continue
+            set_clause = ", ".join(f"{col} = ?" for col in changes)
+            conn.execute(
+                f"UPDATE guests SET {set_clause} WHERE id = ? AND event_id = ?",
+                (*changes.values(), existing["id"], event_id),
+            )
+            updated.append({"id": existing["id"], "full_name": full_name})
+    return {"created": created, "updated": updated, "unchanged": unchanged, "preview": preview}
+
+
 def create_single_guest(event_id, full_name, email, phone, role, table_number):
     """
     Cria UM único convidado (usado no cadastro manual pelo painel do
@@ -937,10 +1028,27 @@ def get_event_stats(event_id):
         row = _row_to_dict(cursor.fetchone())
         total = row["total"] or 0
         checked_in = row["checked_in"] or 0
+        people = _row_to_dict(conn.execute(
+            """
+            SELECT
+                COALESCE(SUM(1 + CASE WHEN rsvp_status = 'confirmed'
+                                      THEN COALESCE(companions_confirmed, 0)
+                                      ELSE COALESCE(companions_allowed, 0) END), 0) AS expected,
+                COALESCE(SUM(CASE WHEN checked_in = 1
+                                  THEN 1 + CASE WHEN rsvp_status = 'confirmed'
+                                                THEN COALESCE(companions_confirmed, 0)
+                                                ELSE COALESCE(companions_allowed, 0) END
+                                  ELSE 0 END), 0) AS entered
+            FROM guests WHERE event_id = ?
+            """,
+            (event_id,),
+        ).fetchone())
         return {
             "total": total,
             "checked_in": checked_in,
             "pending": total - checked_in,
+            "people_expected": people["expected"] or 0,
+            "people_entered": people["entered"] or 0,
         }
 
 
@@ -966,7 +1074,7 @@ def create_user(username, password_hash, role, full_name="", email="", phone="",
             """,
             (
                 user_id,
-                username.strip().lower(),
+                normalize_username(username),
                 password_hash,
                 role,
                 created_at,
@@ -1004,7 +1112,7 @@ def username_exists(username):
 def get_user_by_username(username):
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username.strip().lower(),)
+            "SELECT * FROM users WHERE username = ?", (normalize_username(username),)
         )
         return _row_to_dict(cursor.fetchone())
 
@@ -1169,7 +1277,7 @@ def get_guest_by_rsvp_token(token):
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT g.*, e.name AS event_name, e.event_date, e.location, e.location_maps_url, "
-            "e.rsvp_deadline_days FROM guests g JOIN events e ON e.id = g.event_id WHERE g.rsvp_token = ?",
+            "e.rsvp_deadline_days, e.group_label FROM guests g JOIN events e ON e.id = g.event_id WHERE g.rsvp_token = ?",
             (token,),
         )
         return _row_to_dict(cursor.fetchone())
@@ -1353,6 +1461,20 @@ def get_guest_by_phone_pending_rsvp(normalized_phone):
 
 
 # --------------------------------------------------------------------------
+def _local_hourly(rows):
+    """checkin_time está em UTC: converte as horas para a hora local do evento (Moçambique, UTC+2)."""
+    import event_status
+    shift = int(round(event_status.TZ_OFFSET_HOURS))
+    merged = {}
+    for row in rows:
+        try:
+            hour = (int(row["hour"]) + shift) % 24
+        except (TypeError, ValueError):
+            continue
+        merged[hour] = merged.get(hour, 0) + row["c"]
+    return [{"hour": f"{h:02d}", "count": merged[h]} for h in sorted(merged)]
+
+
 def get_event_live_checkin_stats(event_id):
     """Estatísticas de portaria em tempo real (convidados totais/já validados/pendentes, e distribuição por hora)."""
     with get_connection() as conn:
@@ -1382,7 +1504,8 @@ def get_event_live_checkin_stats(event_id):
         "checked_in": checked_in,
         "pending": max(0, total - checked_in),
         "attendance_rate": attendance_rate,
-        "hourly": [{"hour": r["hour"], "count": r["c"]} for r in hourly_rows],
+        "hourly": _local_hourly(hourly_rows),
+        **{k: v for k, v in get_event_stats(event_id).items() if k.startswith("people_")},
     }
 
 
