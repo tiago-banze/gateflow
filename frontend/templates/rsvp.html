@@ -138,6 +138,20 @@
       </div>
       {% endif %}
 
+      {% if guest.invite_video_url %}
+      <div class="rsvp-detail-row">
+        {{ icon('external-link', 40, 'icon') }}
+        <div><div class="label">Convite em vídeo</div><div class="value"><a href="{{ guest.invite_video_url }}" target="_blank" rel="noopener noreferrer">Ver vídeo →</a></div></div>
+      </div>
+      {% endif %}
+      {% if guest.contact_phone %}
+      <div class="rsvp-detail-row">
+        {{ icon('phone', 40, 'icon') }}
+        <div><div class="label">Prefere confirmar por telefone?</div>
+          <div class="value"><a href="tel:{{ guest.contact_phone|replace(' ', '') }}">{{ guest.contact_phone }}</a></div></div>
+      </div>
+      {% endif %}
+
       <div id="rsvp-form-section">
         <div class="rsvp-greeting">Olá, <strong>{{ guest.full_name }}</strong> — vai poder estar presente?</div>
 

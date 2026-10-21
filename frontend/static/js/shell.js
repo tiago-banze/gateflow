@@ -33,6 +33,17 @@
     // Sem histórico útil: segue o href de segurança.
   });
 
+  // Seta "avançar": volta ao ecrã de onde se acabou de recuar.
+  function syncForward() {
+    const can = window.navigation && typeof window.navigation.canGoForward === "boolean" ? window.navigation.canGoForward : false;
+    document.querySelectorAll("[data-forward]").forEach((b) => { b.hidden = !can; });
+  }
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-forward]")) window.history.forward();
+  });
+  window.addEventListener("pageshow", syncForward);
+  syncForward();
+
   // ----- Sheets -------------------------------------------------------------
   let lastFocused = null;
 

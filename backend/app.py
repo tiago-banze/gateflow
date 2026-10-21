@@ -18,7 +18,7 @@ import hmac
 import traceback
 from datetime import datetime, timedelta
 from functools import wraps
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 from flask import (
     Flask, request, jsonify, render_template, send_file, send_from_directory, abort,
@@ -85,7 +85,20 @@ def serve_service_worker():
 @app.context_processor
 def inject_brand_assets():
     """Disponibiliza gateflow_logo_available em TODOS os templates, sem precisar passar em cada render_template."""
-    return {"gateflow_logo_available": os.path.exists(GATEFLOW_LOGO_PATH)}
+    return {
+        "gateflow_logo_available": os.path.exists(GATEFLOW_LOGO_PATH),
+        "messaging_enabled": config.MESSAGING_ENABLED,
+    }
+
+
+MESSAGING_UNAVAILABLE_TEXT = (
+    "Esta funcionalidade ainda não está disponível: estamos a trabalhar nela. "
+    "Por agora pode gerar os QR Codes e aplicá-los nos convites (PDF)."
+)
+
+
+def _messaging_unavailable_response():
+    return jsonify({"success": False, "error": MESSAGING_UNAVAILABLE_TEXT, "feature_unavailable": True}), 503
 
 
 # --- Fase 5: Rate Limiting (Flask-Limiter) ---
@@ -785,6 +798,15 @@ def api_organizador_get_event(event_id):
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
+def _clean_http_url(value):
+    """Só aceita http(s); devolve '' se vazio ou inválido (limpa o campo)."""
+    text = str(value or "").strip()
+    parsed = urlparse(text)
+    if parsed.scheme in ("http", "https") and parsed.netloc and len(text) <= 300:
+        return text
+    return ""
+
+
 @app.route("/api/organizador/events/<event_id>", methods=["PUT"])
 @role_required_api("organizador")
 def api_organizador_update_event(event_id):
@@ -812,6 +834,8 @@ def api_organizador_update_event(event_id):
             "event_type": payload.get("event_type") if payload.get("event_type") in db.EVENT_TYPES else None,
             "group_label": payload.get("group_label") if payload.get("group_label") in db.GROUP_LABELS else None,
             "auto_send_invites": (1 if payload.get("auto_send_invites") else 0) if "auto_send_invites" in payload else None,
+            "contact_phone": re.sub(r"[^\d+ ]", "", str(payload["contact_phone"]))[:20] if "contact_phone" in payload else None,
+            "invite_video_url": _clean_http_url(payload["invite_video_url"]) if "invite_video_url" in payload else None,
         }
 
         event, owned = db.update_event_by_organizador(event_id, current_user["id"], **update_fields)
@@ -1194,6 +1218,23 @@ def _guest_contact_label(guest):
     return guest.get("full_name") or "Convidado"
 
 
+def _manual_invite_message(event, guest, url):
+    """Texto do convite enviado à mão: detalhes, link para confirmar, vídeo e contacto do organizador."""
+    try:
+        date_label = datetime.fromisoformat(event["event_date"]).strftime("%d/%m/%Y às %H:%M")
+    except (ValueError, TypeError):
+        date_label = event.get("event_date") or ""
+    lines = [f"Olá {guest['full_name']}! Você está convidado(a) para {event['name']}"
+             + (f", a {date_label}" if date_label else "")
+             + (f", em {event['location']}" if event.get("location") else "") + ".",
+             f"Confirme se vai estar presente: {url}"]
+    if event.get("invite_video_url"):
+        lines.append(f"Veja o convite em vídeo: {event['invite_video_url']}")
+    if event.get("contact_phone"):
+        lines.append(f"Prefere confirmar por chamada ou mensagem? {event['contact_phone']}")
+    return "\n".join(lines)
+
+
 def _prepare_invite(guest):
     """Gera (na thread principal, com contexto de request) o link pessoal do convite."""
     return _build_rsvp_url(db.ensure_rsvp_token(guest["id"]))
@@ -1250,6 +1291,8 @@ def _no_channel_response():
 
 
 def _single_notification_response(event, guest, kind):
+    if not config.MESSAGING_ENABLED:
+        return _messaging_unavailable_response()
     if not notifications.any_channel_configured():
         return _no_channel_response()
     (_, result), = _run_notification_batch(event, [guest], kind)
@@ -1264,6 +1307,8 @@ def _single_notification_response(event, guest, kind):
 
 
 def _bulk_notification_response(event, kind):
+    if not config.MESSAGING_ENABLED:
+        return _messaging_unavailable_response()
     """
     Envio em lote por etapas: cada pedido trata até MAX_BATCH_SIZE convidados
     e devolve quantos faltam (`remaining`). O cliente repete até acabar,
@@ -1322,7 +1367,35 @@ def api_organizador_guest_rsvp_link(event_id, guest_id):
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
         return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
-    return jsonify({"success": True, "data": {"url": _prepare_invite(guest)}})
+    url = _prepare_invite(guest)
+    message = _manual_invite_message(event, guest, url)
+    phone = normalize_msisdn(guest.get("phone"))
+    encoded = quote(message)
+    return jsonify({"success": True, "data": {
+        "url": url,
+        "message": message,
+        "has_phone": bool(phone),
+        "whatsapp_url": f"https://wa.me/{phone}?text={encoded}" if phone else f"https://wa.me/?text={encoded}",
+        "sms_url": f"sms:+{phone}?body={encoded}" if phone else f"sms:?body={encoded}",
+    }})
+
+
+@app.route("/api/organizador/events/<event_id>/guests/<guest_id>/mark-sent", methods=["POST"])
+@role_required_api("organizador")
+def api_organizador_mark_invite_sent_manually(event_id, guest_id):
+    """Regista que o convite foi enviado à mão (WhatsApp/SMS pelo telemóvel do organizador)."""
+    if not config.MESSAGING_ENABLED:
+        return _messaging_unavailable_response()
+    current_user = get_current_user()
+    event, error = _get_owned_event(event_id, current_user["id"])
+    if error:
+        return error
+    if not db.get_guest_by_event(event_id, guest_id):
+        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+    payload = request.get_json(silent=True) or {}
+    channel = "sms" if payload.get("channel") == "sms" else "whatsapp"
+    db.record_guest_notification(guest_id, "invite", True, [f"{channel} (manual)"])
+    return jsonify({"success": True})
 
 
 @app.route("/api/organizador/events/<event_id>/guests/send-preview", methods=["GET"])
@@ -1333,6 +1406,8 @@ def api_organizador_send_preview(event_id):
     canal, quem fica de fora (sem contacto) e o texto exato das mensagens.
     Não envia nada.
     """
+    if not config.MESSAGING_ENABLED:
+        return _messaging_unavailable_response()
     current_user = get_current_user()
     event, error = _get_owned_event(event_id, current_user["id"])
     if error:
@@ -2037,12 +2112,28 @@ def api_get_guest_qrcode(event_id, guest_id):
     return send_file(qr_path, mimetype="image/png")
 
 
+@app.route("/api/organizador/events/<event_id>/guests/export-pdf", methods=["GET"])
+@role_required_api("organizador")
+@limiter.limit("20 per minute")
+def api_organizador_export_pdf(event_id):
+    """PDF de convites com o QR Code de cada convidado (funciona sem configurar envios)."""
+    current_user = get_current_user()
+    event, error = _get_owned_event(event_id, current_user["id"])
+    if error:
+        return error
+    return _invites_pdf_response(event_id, event)
+
+
 @app.route("/api/events/<event_id>/guests/export-pdf", methods=["GET"])
 @role_required_api("admin")
 def api_export_pdf(event_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+    return _invites_pdf_response(event_id, event)
+
+
+def _invites_pdf_response(event_id, event):
     try:
         guests = db.list_guests(event_id)
         if not guests:

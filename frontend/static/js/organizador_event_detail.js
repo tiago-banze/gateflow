@@ -9,6 +9,14 @@ const EVENT_ENDED = document.body.getAttribute("data-event-ended") === "true";
 const POLL_INTERVAL_MS = 10000;
 const GROUP_LABEL = document.body.getAttribute("data-group-label") || "Mesa";
 const AUTO_SEND = document.body.getAttribute("data-auto-send") === "1";
+const MESSAGING = document.body.getAttribute("data-messaging") === "1";
+
+/** Envio por e-mail/WhatsApp/SMS ainda em preparação: avisa e não faz nada. Devolve true se pode continuar. */
+function messagingGuard() {
+  if (MESSAGING) return true;
+  showToast("Esta funcionalidade ainda não está disponível: estamos a trabalhar nela. Por agora pode gerar os QR Codes e aplicá-los nos convites (PDF).", "info", 6000);
+  return false;
+}
 
 const state = { guests: [], rsvp: null, stats: null, channels: null, filter: "all", search: "", actionGuest: null };
 let pollTimer = null;
@@ -196,6 +204,12 @@ async function loadChannels() {
 
 function renderChannels() {
   const box = document.getElementById("channels-box");
+  if (!MESSAGING) {
+    box.innerHTML = `<div class="notice is-info">${icon("info")}<div><strong>Envio por e-mail, WhatsApp e SMS: em preparação.</strong> Ainda não funciona. Por agora, gere o PDF com os QR Codes e use-o nos convites.</div></div>`;
+    document.getElementById("btn-send-invites-bulk").disabled = false;
+    document.getElementById("btn-send-reminders-bulk").disabled = false;
+    return;
+  }
   const ch = state.channels;
   if (!ch) { box.innerHTML = ""; return; }
   const defs = [["whatsapp", "WhatsApp", "message"], ["sms", "SMS", "phone"], ["email", "E-mail", "mail"]];
@@ -219,6 +233,7 @@ function renderSendCards() {
   const rem = document.getElementById("btn-send-reminders-bulk");
   if (!inv.dataset.busy) inv.innerHTML = `${icon("send")} ${pendingInvites ? `Enviar ${pendingInvites} convite(s)` : "Sem convites por enviar"}`;
   if (!rem.dataset.busy) rem.innerHTML = `${icon("bell")} ${pendingReminders ? `Enviar ${pendingReminders} lembrete(s)` : "Sem lembretes por enviar"}`;
+  if (!MESSAGING) { inv.disabled = false; rem.disabled = false; return; }
   if (!inv.dataset.busy && !pendingInvites) inv.disabled = true;
   else if (!inv.dataset.busy && state.channels) inv.disabled = !Object.values(state.channels).some((c) => c.configured) || EVENT_ENDED;
   if (!rem.dataset.busy && !pendingReminders) rem.disabled = true;
@@ -229,6 +244,7 @@ let pendingSendKind = null;
 
 /** Mostra o que vai ser enviado (quem, por que canal, texto exato) e só envia depois de confirmar. */
 async function openSendPreview(kind) {
+  if (!messagingGuard()) return;
   const body = document.getElementById("send-preview-body");
   const confirmBtn = document.getElementById("btn-send-confirm");
   const isInvite = kind === "invite";
@@ -260,7 +276,7 @@ async function openSendPreview(kind) {
 }
 
 function offerAutoSend() {
-  if (!AUTO_SEND || EVENT_ENDED) return;
+  if (!MESSAGING || !AUTO_SEND || EVENT_ENDED) return;
   const banner = document.getElementById("add-pending-banner");
   document.getElementById("add-pending-text").textContent = "Convidados novos prontos para convidar.";
   banner.classList.remove("hidden");
@@ -327,7 +343,8 @@ async function runBulkSend(kind) {
 }
 
 function bindSending() {
-  loadChannels();
+  if (MESSAGING) loadChannels(); else renderChannels();
+  document.getElementById("btn-export-pdf").addEventListener("click", downloadInvitesPdf);
   document.getElementById("btn-send-invites-bulk").addEventListener("click", () => openSendPreview("invite"));
   document.getElementById("btn-send-reminders-bulk").addEventListener("click", () => openSendPreview("reminder"));
   document.getElementById("btn-review-send").addEventListener("click", () => { closeSheet("add-guests-sheet"); openSendPreview("invite"); });
@@ -340,6 +357,7 @@ function bindSending() {
   const sendOne = async (kind) => {
     const g = state.actionGuest;
     if (!g) return;
+    if (!messagingGuard()) return;
     closeSheet("guest-actions-sheet");
     showToast("A enviar…", "info", 1500);
     const res = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/${g.id}/${kind === "invite" ? "send-invite" : "send-reminder"}`, { method: "POST" });
@@ -352,6 +370,20 @@ function bindSending() {
   };
   document.getElementById("act-invite").addEventListener("click", () => sendOne("invite"));
   document.getElementById("act-reminder").addEventListener("click", () => sendOne("reminder"));
+  // Convite à mão (grátis): abre o WhatsApp/SMS do organizador com a mensagem pronta.
+  const sendManual = async (channel) => {
+    const g = state.actionGuest;
+    if (!g) return;
+    if (!messagingGuard()) return;
+    const res = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/${g.id}/rsvp-link`);
+    if (!res.success) { showToast(res.error || "Erro ao preparar a mensagem.", "error"); return; }
+    if (!res.data.has_phone) showToast("Sem telemóvel registado: escolha o contacto na app.", "info", 4000);
+    await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/${g.id}/mark-sent`, { method: "POST", body: JSON.stringify({ channel }) });
+    closeSheet("guest-actions-sheet");
+    window.location.href = channel === "sms" ? res.data.sms_url : res.data.whatsapp_url;
+  };
+  document.getElementById("act-wa").addEventListener("click", () => sendManual("whatsapp"));
+  document.getElementById("act-sms").addEventListener("click", () => sendManual("sms"));
   document.getElementById("act-copy").addEventListener("click", async () => {
     const g = state.actionGuest;
     if (!g) return;
@@ -402,6 +434,8 @@ async function handleSaveEvent(e) {
     event_type: document.getElementById("edit-type").value,
     group_label: document.getElementById("edit-group-label").value,
     auto_send_invites: document.getElementById("edit-auto-send").checked,
+    contact_phone: document.getElementById("edit-contact-phone").value.trim(),
+    invite_video_url: document.getElementById("edit-video-url").value.trim(),
   };
   if (!payload.name || !payload.event_date || !payload.location || !payload.organizer_display_name) {
     showToast("Preencha nome, data, local e organizador.", "error");
@@ -540,7 +574,38 @@ async function runImport(preview) {
   closeSheet("add-guests-sheet");
   await refreshAll();
   if (window.gotoTab) window.gotoTab("convidados");
-  if (AUTO_SEND && res.data.imported_count) openSendPreview("invite");
+  if (MESSAGING && AUTO_SEND && res.data.imported_count) openSendPreview("invite");
+}
+
+async function downloadInvitesPdf() {
+  const btn = document.getElementById("btn-export-pdf");
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> A gerar o PDF…';
+  try {
+    const response = await fetch(`${window.location.origin}/api/organizador/events/${EVENT_ID}/guests/export-pdf`, { credentials: "same-origin" });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      showToast(err.error || "Erro ao gerar o PDF.", "error");
+      return;
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const match = /filename="?([^";]+)"?/.exec(response.headers.get("Content-Disposition") || "");
+    a.href = url;
+    a.download = match ? match[1] : "convites.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    showToast("PDF de convites gerado.", "success");
+  } catch (err) {
+    showToast("Erro de ligação ao gerar o PDF.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
 }
 
 async function downloadTemplate(kind = "xlsx") {

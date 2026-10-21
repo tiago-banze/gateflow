@@ -146,6 +146,10 @@ def get_or_create_secret_key():
     return new_key
 
 
+# Envio de convites/lembretes por e-mail, WhatsApp e SMS. Desligado até estar configurado:
+# a interface avisa que ainda não está disponível. Ligue com GATEFLOW_MESSAGING_ENABLED=1.
+MESSAGING_ENABLED = os.environ.get("GATEFLOW_MESSAGING_ENABLED", "0").strip().lower() in ("1", "true", "yes")
+
 # Retenção: eventos encerrados há mais de X dias são apagados (com convidados e RSVPs).
 # 0 desativa a limpeza automática.
 EVENT_RETENTION_DAYS = int(os.environ.get("GATEFLOW_RETENTION_DAYS", "365"))

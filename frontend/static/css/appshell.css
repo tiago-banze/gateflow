@@ -396,3 +396,5 @@ a.list-row:hover, button.list-row:hover, a.list-row:active, button.list-row:acti
 /* Botão de leitura de QR Code (portaria) acima da barra de separadores */
 body.has-shell .scan-fab { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px); right: 16px; }
 @media (min-width: 900px) { body.has-shell .scan-fab { bottom: 28px; right: 28px; } }
+[data-forward][hidden]{display:none!important}
+button.back-link{background:none;border:0;cursor:pointer;font:inherit}

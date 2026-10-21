@@ -138,11 +138,14 @@
 {% macro app_shell(title, active='', back=None, back_label='Voltar') -%}
 {% set nav = NAV_ITEMS.get(current_user.role, []) if current_user else [] %}
 {% set display_name = (current_user.full_name or current_user.username) if current_user else '' %}
+{% set home_url = url_for(nav[0][2]) if nav else url_for('page_index') %}
+{% if not back and nav and active != nav[0][0] %}{% set back = home_url %}{% set back_label = nav[0][1] %}{% endif %}
 <a class="skip-link" href="#main-content">Saltar para o conteúdo</a>
 
 <header class="appbar">
   {% if back %}
   <a class="appbar-back" href="{{ back }}" data-back aria-label="{{ back_label }}">{{ icon('arrow-left', 22) }}</a>
+  <button type="button" class="appbar-back appbar-forward" data-forward aria-label="Avançar" hidden>{{ icon('arrow-right', 22) }}</button>
   {% else %}
   <a class="appbar-logo" href="{{ nav and url_for(nav[0][2]) or url_for('page_index') }}" aria-label="GateFlow — início">
     {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" width="32" height="32" alt="" onerror="this.onerror=null;this.src='{{ url_for('serve_asset', filename='GateFlow.png') }}'" />{% endif %}
@@ -171,7 +174,8 @@
 </header>
 
 <main class="container app-main" id="main-content">
-  {% if back %}<a class="back-link back-link-desktop" href="{{ back }}" data-back>{{ icon('arrow-left', 16) }} {{ back_label }}</a>{% endif %}
+  {% if back %}<a class="back-link back-link-desktop" href="{{ back }}" data-back>{{ icon('arrow-left', 16) }} {{ back_label }}</a>
+  <button type="button" class="back-link back-link-desktop appbar-forward" data-forward hidden aria-label="Avançar">Avançar {{ icon('arrow-right', 16) }}</button>{% endif %}
   {% if caller is defined %}{{ caller() }}{% endif %}
 </main>
 

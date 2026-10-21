@@ -359,6 +359,7 @@ def init_db():
         _migrate_add_column_if_missing(conn, "events", "event_type", "TEXT")
         _migrate_add_column_if_missing(conn, "events", "group_label", "TEXT")
         _migrate_add_column_if_missing(conn, "events", "auto_send_invites", "INTEGER NOT NULL DEFAULT 0")
+        _migrate_add_column_if_missing(conn, "events", "invite_video_url", "TEXT")
 
         conn.execute(
             """
@@ -537,7 +538,7 @@ def update_event_by_organizador(event_id, organizador_id, **fields):
     Retorna (event: dict|None, found_and_owned: bool).
     """
     allowed_fields = {"name", "location", "description", "event_date", "organizer_display_name",
-                      "event_type", "group_label", "auto_send_invites"}
+                      "event_type", "group_label", "auto_send_invites", "contact_phone", "invite_video_url"}
     updates = {k: v for k, v in fields.items() if k in allowed_fields and v is not None}
     if not updates:
         event = get_event(event_id)
@@ -1302,7 +1303,7 @@ def get_guest_by_rsvp_token(token):
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT g.*, e.name AS event_name, e.event_date, e.location, e.location_maps_url, "
-            "e.rsvp_deadline_days, e.group_label FROM guests g JOIN events e ON e.id = g.event_id WHERE g.rsvp_token = ?",
+            "e.rsvp_deadline_days, e.group_label, e.contact_phone, e.invite_video_url FROM guests g JOIN events e ON e.id = g.event_id WHERE g.rsvp_token = ?",
             (token,),
         )
         return _row_to_dict(cursor.fetchone())

@@ -26,6 +26,9 @@ Não existem senhas por defeito: o primeiro admin só é criado se definires
 `GATEFLOW_ADMIN_PASSWORD` (mín. 10 caracteres). Sem `DATABASE_URL` usa SQLite local.
 
 ## Envio real de mensagens
+> **Desligado por defeito.** Enquanto `GATEFLOW_MESSAGING_ENABLED` não for `1`, os botões de envio
+> (e-mail, WhatsApp, SMS) mostram "ainda não está disponível". O PDF de convites com QR Code funciona sempre.
+
 Cada canal só está ativo com credenciais. Sem credenciais, o convidado fica
 **"não enviado"** com o motivo; o sistema nunca finge sucesso.
 

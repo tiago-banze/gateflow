@@ -5,7 +5,7 @@
   {% include "_head.html" %}
   <title>{{ event.name }} · GateFlow</title>
 </head>
-<body data-event-id="{{ event.id }}" data-group-label="{{ event.group_label or 'Mesa' }}" data-auto-send="{{ '1' if event.auto_send_invites else '0' }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
+<body data-event-id="{{ event.id }}" data-group-label="{{ event.group_label or 'Mesa' }}" data-auto-send="{{ '1' if event.auto_send_invites else '0' }}" data-messaging="{{ '1' if messaging_enabled else '0' }}" data-event-ended="{{ 'true' if event.status.code == 'encerrado' else 'false' }}">
 {% call app_shell(event.name, active='events', back=url_for('page_organizador_events'), back_label='Eventos') %}
 
   {% if event.status.code == 'encerrado' %}
@@ -90,6 +90,12 @@
 
   <!-- ============================ CONVITES ============================ -->
   <section class="tab-panel" data-tab-panel="convites" role="tabpanel" hidden>
+    <div class="send-card">
+      <h3>{{ icon('scan', 20) }} QR Codes e convites em PDF</h3>
+      <p>Gere o PDF com o QR Code de cada convidado e use-o nos convites. <strong>Já funciona.</strong></p>
+      <button type="button" class="btn btn-primary btn-block" id="btn-export-pdf">{{ icon('download') }} Baixar PDF de convites</button>
+    </div>
+
     <div id="channels-box"></div>
 
     <div class="send-card">
@@ -130,6 +136,10 @@
           <div><label for="edit-group-label">Agrupar convidados por</label>
             <select id="edit-group-label">{% for t in ['Mesa','Zona','Sector','Categoria','Sala','Fila'] %}<option value="{{ t }}"{% if (event.group_label or 'Mesa') == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
         </div>
+        <label for="edit-contact-phone">Telefone para confirmações <span class="text-muted">(aparece no convite)</span></label>
+        <input type="tel" id="edit-contact-phone" inputmode="tel" maxlength="20" value="{{ event.contact_phone or '' }}" placeholder="Ex: +258 84 123 4567" />
+        <label for="edit-video-url">Link do vídeo do convite <span class="text-muted">(opcional)</span></label>
+        <input type="url" id="edit-video-url" maxlength="300" value="{{ event.invite_video_url or '' }}" placeholder="https://…" />
         <label class="check-row"><input type="checkbox" id="edit-auto-send"{% if event.auto_send_invites %} checked{% endif %} /> <span>Propor o envio dos convites assim que adicionar convidados (pede sempre confirmação)</span></label>
         <label for="edit-description">Descrição</label>
         <textarea id="edit-description" maxlength="2000">{{ event.description or '' }}</textarea>
@@ -235,6 +245,8 @@
       <div class="menu-list">
         <button type="button" class="menu-row" id="act-invite"><span class="menu-row-icon">{{ icon('send') }}</span><span class="menu-row-text"><strong>Enviar convite</strong><small id="act-invite-sub">Link para confirmar presença</small></span></button>
         <button type="button" class="menu-row" id="act-reminder"><span class="menu-row-icon">{{ icon('bell') }}</span><span class="menu-row-text"><strong>Enviar lembrete com QR Code</strong><small>Só para quem confirmou</small></span></button>
+        <button type="button" class="menu-row" id="act-wa"><span class="menu-row-icon">{{ icon('send') }}</span><span class="menu-row-text"><strong>Convidar por WhatsApp</strong><small>Abre o seu WhatsApp com a mensagem pronta (grátis)</small></span></button>
+        <button type="button" class="menu-row" id="act-sms"><span class="menu-row-icon">{{ icon('phone') }}</span><span class="menu-row-text"><strong>Convidar por SMS</strong><small>Abre as suas mensagens com o texto pronto</small></span></button>
         <button type="button" class="menu-row" id="act-copy"><span class="menu-row-icon">{{ icon('external-link') }}</span><span class="menu-row-text"><strong>Copiar link de confirmação</strong><small>Para enviar por outra via</small></span></button>
       </div>
     </div>
