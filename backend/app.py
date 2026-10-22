@@ -36,7 +36,8 @@ import email_service
 import event_status
 import guest_import
 import notifications
-from security import login_attempt_tracker
+import security
+from security import get_client_ip
 from text_utils import slugify_filename, normalize_msisdn, normalize_username, validate_username
 from ssl_utils import ensure_self_signed_cert
 from qrcode_utils import generate_guest_qrcode, extract_guest_id_from_payload, QRCodeGenerationError
@@ -109,10 +110,9 @@ def _messaging_unavailable_response():
 # compartilhado (ver .env.example).
 try:
     from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
 
     limiter = Limiter(
-        get_remote_address,
+        lambda: get_client_ip(request),
         app=app,
         default_limits=["600 per hour"],
         storage_uri=os.environ.get("RATELIMIT_STORAGE_URI", "memory://"),
@@ -127,6 +127,8 @@ except ImportError:  # pragma: no cover - so acontece se Flask-Limiter nao estiv
             return decorator
 
     limiter = _NoOpLimiter()
+
+login_attempt_tracker = security.SharedLoginAttemptTracker(db, security.login_attempt_tracker)
 
 # Em produção (Vercel) vem da variável de ambiente SECRET_KEY; em
 # desenvolvimento local, persistida em disco (data/secret.key) para que
@@ -428,7 +430,7 @@ def page_login():
     if request.method == "POST":
         username = normalize_username(request.form.get("username"))
         password = request.form.get("password") or ""
-        client_ip = request.remote_addr or "unknown"
+        client_ip = get_client_ip(request)
 
         is_locked, seconds_remaining = login_attempt_tracker.is_locked(username, client_ip)
         if is_locked:
@@ -485,7 +487,9 @@ def page_organizador_signup():
 
         email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-        if not full_name or not email or not username or not password:
+        if security.too_many(db, "signup_ip", get_client_ip(request), 10, 3600):
+            error = "Demasiados cadastros deste dispositivo. Tente novamente mais tarde."
+        elif not full_name or not email or not username or not password:
             error = "Preencha nome completo, e-mail, usuário e senha."
         elif validate_username(username):
             error = validate_username(username)
@@ -1052,6 +1056,8 @@ def api_create_feedback():
     Fica com status='pending' (db.create_feedback) e só aparece
     publicamente depois de um admin aprovar em /admin/depoimentos.
     """
+    if security.too_many(db, "feedback_ip", get_client_ip(request), 5, 3600):
+        return jsonify({"success": False, "error": "Demasiados envios. Tente novamente mais tarde."}), 429
     payload = request.get_json(force=True, silent=True) or {}
     name = (payload.get("name") or "").strip()
     email = (payload.get("email") or "").strip()

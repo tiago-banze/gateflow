@@ -311,6 +311,18 @@ def init_db():
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks (created_at DESC)")
 
+        # --- Limite de tentativas partilhado (funciona em várias instâncias serverless) ---
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rate_events (
+                bucket TEXT NOT NULL,
+                key TEXT NOT NULL,
+                ts BIGINT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rate_events_lookup ON rate_events (bucket, key, ts)")
+
         # --- Fase 6b: Moderação de depoimentos ---
         # Para bancos já existentes (criados antes do campo `status`
         # existir): ADD COLUMN idempotente, mesmo padrão usado em todas as
@@ -1153,6 +1165,29 @@ def count_users():
     with get_connection() as conn:
         cursor = conn.execute("SELECT COUNT(*) AS total FROM users")
         return _row_to_dict(cursor.fetchone())["total"]
+
+
+def rate_count(bucket, key, since_ts):
+    """Quantos eventos (bucket, key) existem desde `since_ts` (epoch, segundos) e o mais recente."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c, MAX(ts) AS last FROM rate_events WHERE bucket = ? AND key = ? AND ts > ?",
+            (bucket, key, int(since_ts)),
+        ).fetchone()
+    return int(row["c"] or 0), int(row["last"] or 0)
+
+
+def rate_add(bucket, key, ts):
+    """Regista um evento e apaga, de vez em quando, registos com mais de 1 dia."""
+    with get_connection() as conn:
+        conn.execute("INSERT INTO rate_events (bucket, key, ts) VALUES (?, ?, ?)", (bucket, key, int(ts)))
+        if int(ts) % 50 == 0:
+            conn.execute("DELETE FROM rate_events WHERE ts < ?", (int(ts) - 86400,))
+
+
+def rate_clear(bucket, key):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM rate_events WHERE bucket = ? AND key = ?", (bucket, key))
 
 
 def start_new_user_session(user_id):
