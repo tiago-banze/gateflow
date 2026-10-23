@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
       group_label: document.getElementById("event-group-label").value,
     };
     if (!payload.name || !payload.organizer_display_name || !payload.location || !payload.event_date) {
-      showToast("Preencha nome, data, local e organizador.", "error");
+      showToast("Falta preencher o nome, a data, o local ou o organizador.", "error");
       return;
     }
 

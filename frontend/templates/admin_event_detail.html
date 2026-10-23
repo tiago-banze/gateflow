@@ -44,9 +44,9 @@
       <div class="card">
         <div class="card-head"><h3>Importar convidados (.xlsx)</h3></div>
         <p class="card-desc">
-          A planilha deve conter as colunas <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong>.
+          A lista deve conter as colunas <strong>Nome Completo, Email, Telefone, Cargo/Tipo</strong>.
           A coluna <strong>Mesa</strong> é opcional (se ausente ou vazia, o convidado recebe "Não definida").
-          Convidados já cadastrados neste evento (por e-mail, ou Nome+Telefone) são ignorados automaticamente.
+          Convidados já registados neste evento (por e-mail, ou Nome+Telefone) são ignorados automaticamente.
         </p>
         <div class="upload-drop"><input type="file" id="input-xlsx" accept=".xlsx" /></div>
         <button class="btn btn-primary btn-block" style="margin-top:14px;" id="btn-import">{{ icon('upload') }} Importar lista de convidados</button>
@@ -64,8 +64,8 @@
     </div>
 
     <div class="card" id="module-a-manual-guest" style="margin-top:20px;">
-      <div class="card-head"><h3>Cadastrar convidado manualmente</h3></div>
-      <p class="card-desc">Adicione um convidado avulso, sem precisar reimportar a planilha inteira.</p>
+      <div class="card-head"><h3>Adicionar convidado manualmente</h3></div>
+      <p class="card-desc">Adicione um convidado avulso, sem precisar reimportar a lista inteira.</p>
       <form id="form-new-guest">
         <div class="grid-2 form-grid">
           <div>

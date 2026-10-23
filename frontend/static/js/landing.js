@@ -178,7 +178,7 @@ async function handleSubmitTestimonial(event) {
   };
 
   if (!payload.rating) {
-    showToast("Selecione uma nota de 1 a 5 estrelas.", "error");
+    showToast("Escolha de 1 a 5 estrelas.", "error");
     return;
   }
 

@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const result = await apiRequest("/api/organizador/events");
   const listEl = document.getElementById("events-list");
   if (!result.success) {
-    listEl.innerHTML = `<div class="empty-card"><p>Erro ao carregar eventos: ${escapeHtml(result.error || "desconhecido")}</p></div>`;
+    listEl.innerHTML = `<div class="empty-card"><p>Não foi possível carregar os eventos: ${escapeHtml(result.error || "desconhecido")}</p></div>`;
     return;
   }
   allEvents = result.data || [];

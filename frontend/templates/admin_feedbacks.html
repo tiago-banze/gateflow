@@ -23,7 +23,7 @@
 {% endcall %}
 
   {% if initial_pending_feedbacks is not none %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // Fila de moderação já pronta do servidor (SSR).
     window.__INITIAL_PENDING_FEEDBACKS__ = {{ initial_pending_feedbacks|tojson }};
   </script>

@@ -162,14 +162,14 @@
   <div class="lp-section-inner">
     <div class="lp-section-head">
       <div class="lp-section-eyebrow">Como funciona</div>
-      <h2 class="lp-section-title">Três passos, do cadastro à porta do evento</h2>
+      <h2 class="lp-section-title">Três passos, do registo à porta do evento</h2>
     </div>
 
     <div class="lp-steps">
       <div class="lp-step">
         <div class="lp-step-number">01</div>
         <h3>Crie o seu evento</h3>
-        <p>Cadastre o evento e importe a lista de convidados em formato Excel.</p>
+        <p>Registe o evento e importe a lista de convidados em formato Excel.</p>
       </div>
       <div class="lp-step">
         <div class="lp-step-number">02</div>
@@ -218,7 +218,7 @@
       <a href="{{ url_for('page_admin') if current_user and current_user.role == 'admin' else url_for('page_login', intent='admin') }}" class="lp-access-card">
         <div class="lp-access-icon">{{ icon('shield-check') }}</div>
         <h3>Administrador</h3>
-        <p>Cadastre eventos, importe convidados e gere os convites com QR Code.</p>
+        <p>Registe eventos, importe convidados e gere os convites com QR Code.</p>
         <div class="lp-access-arrow">Aceder {{ icon('arrow-right') }}</div>
       </a>
 

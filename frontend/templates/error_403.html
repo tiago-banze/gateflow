@@ -14,7 +14,7 @@
       <h2>Acesso negado</h2>
       <p>
         {% if current_user %}
-          O usuário <strong>{{ current_user.username }}</strong> (perfil <strong>{{ current_user.role }}</strong>) não tem permissão para aceder a esta área.
+          O utilizador <strong>{{ current_user.username }}</strong> (perfil <strong>{{ current_user.role }}</strong>) não tem permissão para aceder a esta área.
         {% else %}
           Não tem permissão para aceder a esta área.
         {% endif %}

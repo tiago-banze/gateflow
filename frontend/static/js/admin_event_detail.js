@@ -76,7 +76,7 @@ async function loadGuests(search) {
  const result = await apiRequest(`/api/events/${EVENT_ID}/guests${query}`);
 
  if (!result.success) {
- tableEl.innerHTML = `<div class="empty-state">Erro ao carregar convidados.</div>`;
+ tableEl.innerHTML = `<div class="empty-state">Não foi possível carregar os convidados.</div>`;
  return;
  }
 
@@ -149,7 +149,7 @@ async function loadGuests(search) {
 
 function renderInviteCell(g) {
  if (!g.email) {
- return `<span class="badge badge-muted" title="Sem e-mail cadastrado">—</span>`;
+ return `<span class="badge badge-muted" title="Sem e-mail registado">—</span>`;
  }
 
  let badge;
@@ -177,9 +177,9 @@ async function handleSendInvite(guestId) {
  const result = await apiRequest(`/api/events/${EVENT_ID}/guests/${guestId}/send-invite`, { method: "POST" });
 
  if (!result.success) {
- showToast(result.error || "Erro ao enviar o convite por e-mail.", "error");
+ showToast(result.error || "Não foi possível enviar o convite.", "error");
  } else {
- showToast("Convite enviado por e-mail com sucesso!", "success");
+ showToast("Convite enviado por e-mail.", "success");
  }
  // Atualiza a badge/linha independentemente de sucesso ou falha, já que
  // o backend sempre grava o resultado ('sent' ou 'failed') no convidado.
@@ -191,7 +191,7 @@ async function handleImportGuests() {
  const file = fileInput.files[0];
 
  if (!file) {
- showToast("Selecione um arquivo .xlsx para importar.", "error");
+ showToast("Escolha um ficheiro .xlsx para importar.", "error");
  return;
  }
 
@@ -211,14 +211,14 @@ async function handleImportGuests() {
  btn.innerHTML = `${icon("upload")} Importar lista de convidados`;
 
  if (!result.success) {
- showToast(result.error || "Erro ao importar convidados.", "error");
+ showToast(result.error || "Não foi possível importar a lista.", "error");
  return;
  }
 
  const { summary, warnings } = result.data;
  showToast(summary, "success", 5000);
  if (warnings && warnings.length > 0) {
- showToast(`${warnings.length} linha(s) da planilha foram ignoradas. Verifique o console.`, "info");
+ showToast(`${warnings.length} linha(s) da lista ficaram de fora.`, "info");
  console.warn("Avisos de importação:", warnings);
  }
 
@@ -236,7 +236,7 @@ async function handleCreateGuestManual(e) {
  const table_number = document.getElementById("guest-table").value.trim();
 
  if (!full_name) {
- showToast("O nome completo é obrigatório.", "error");
+ showToast("Indique o nome completo.", "error");
  return;
  }
 
@@ -252,11 +252,11 @@ async function handleCreateGuestManual(e) {
  btn.innerHTML = `${icon("plus")} Adicionar convidado`;
 
  if (!result.success) {
- showToast(result.error || "Erro ao adicionar convidado.", "error");
+ showToast(result.error || "Não foi possível adicionar o convidado.", "error");
  return;
  }
 
- showToast(`Convidado "${result.data.full_name}" adicionado com sucesso!`, "success");
+ showToast(`Convidado "${result.data.full_name}" adicionado.`, "success");
  document.getElementById("form-new-guest").reset();
  loadGuests("");
 }
@@ -294,7 +294,7 @@ async function handleSaveEditGuest(e) {
  const table_number = document.getElementById("edit-guest-table").value.trim();
 
  if (!full_name) {
- showToast("O nome completo é obrigatório.", "error");
+ showToast("Indique o nome completo.", "error");
  return;
  }
 
@@ -310,11 +310,11 @@ async function handleSaveEditGuest(e) {
  btn.innerHTML = `${icon("check")} Salvar alterações`;
 
  if (!result.success) {
- showToast(result.error || "Erro ao editar convidado.", "error");
+ showToast(result.error || "Não foi possível guardar as alterações.", "error");
  return;
  }
 
- showToast("Convidado atualizado com sucesso!", "success");
+ showToast("Convidado atualizado.", "success");
  closeEditGuestModal();
  loadGuests("");
 }
@@ -328,7 +328,7 @@ async function handleDeleteGuest(guestId) {
 
  const result = await apiRequest(`/api/events/${EVENT_ID}/guests/${guestId}`, { method: "DELETE" });
  if (!result.success) {
- showToast(result.error || "Erro ao excluir convidado.", "error");
+ showToast(result.error || "Não foi possível remover o convidado.", "error");
  return;
  }
 
@@ -349,7 +349,7 @@ async function downloadFile(path, btnId, originalLabel, loadingLabel) {
  const response = await fetch(`${window.location.origin}${path}`);
  if (!response.ok) {
  const errorPayload = await response.json().catch(() => ({}));
- showToast(errorPayload.error || "Erro ao gerar o arquivo.", "error");
+ showToast(errorPayload.error || "Não foi possível gerar o ficheiro.", "error");
  return;
  }
 
@@ -362,9 +362,9 @@ async function downloadFile(path, btnId, originalLabel, loadingLabel) {
  a.click();
  a.remove();
  window.URL.revokeObjectURL(url);
- showToast("Arquivo gerado com sucesso!", "success");
+ showToast("Ficheiro pronto.", "success");
  } catch (err) {
- showToast("Erro de conexão ao gerar o arquivo.", "error");
+ showToast("Sem ligação. Verifique a internet e tente outra vez.", "error");
  } finally {
  btn.disabled = false;
  btn.innerHTML = originalLabel;

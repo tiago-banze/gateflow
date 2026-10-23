@@ -312,7 +312,7 @@ function renderGuestTable(guests, tableBody) {
 async function handleManualCheckin(guestId, btnEl) {
  if (EVENT_HAS_ENDED) {
  playErrorSound();
- showToast("Este evento já foi encerrado. Não é possível fazer novos check-ins.", "error");
+ showToast("Este evento já terminou, por isso não dá para registar mais entradas.", "error");
  return;
  }
 
@@ -339,7 +339,7 @@ async function handleManualCheckin(guestId, btnEl) {
  }
  if (applied === "already_checked_in") {
  playErrorSound();
- showToast("Este convidado já tinha feito check-in (registado neste aparelho).", "error");
+ showToast("Esta pessoa já tinha entrado (registado neste telemóvel).", "error");
  if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Check-in"; }
  return;
  }
@@ -347,11 +347,11 @@ async function handleManualCheckin(guestId, btnEl) {
  }
  playErrorSound();
  if (result.already_checked_in) {
- showToast("Check-in já realizado anteriormente!", "error");
+ showToast("Esta pessoa já entrou.", "error");
  } else if (result.raw && result.raw.event_ended) {
  showToast(result.error || "Este evento já foi encerrado.", "error");
  } else {
- showToast(result.error || "Erro ao registrar check-in.", "error");
+ showToast(result.error || "Não foi possível registar a entrada.", "error");
  }
  if (btnEl) {
  btnEl.disabled = false;
@@ -434,7 +434,7 @@ function showCheckinConfirmation(guest) {
 async function openScanner() {
  if (EVENT_HAS_ENDED) {
  playErrorSound();
- showToast("Este evento já foi encerrado. Não é possível fazer novos check-ins.", "error");
+ showToast("Este evento já terminou, por isso não dá para registar mais entradas.", "error");
  return;
  }
 
@@ -513,7 +513,7 @@ function describeCameraError(err) {
  if (name === "SecurityError") {
  return "O navegador bloqueou a câmera neste endereço. Peça ao administrador para configurar o chrome://flags neste aparelho (ver README, seção 'Câmera não funciona pelo IP da rede').";
  }
- return "Não foi possível acessar a câmera. Verifique as permissões do navegador, ou peça ao administrador para configurar este aparelho (ver README).";
+ return "Não conseguimos abrir a câmara. Permita o acesso à câmara nas definições do navegador e tente outra vez.";
 }
 
 async function closeScanner() {
@@ -624,7 +624,7 @@ function showScanBanner(kind, guest, message) {
   detail = `<span>${guest && guest.checkin_time_local ? `às ${escapeHtml(guest.checkin_time_local.slice(11))}` : "anteriormente"}</span>`;
  } else {
   title = "Não aceite";
-  detail = `<span>${escapeHtml(message || "QR Code inválido.")}</span>`;
+  detail = `<span>${escapeHtml(message || "Este QR Code não é do GateFlow.")}</span>`;
  }
  banner.className = `scan-banner is-${kind}`;
  banner.innerHTML = `<div class="scan-banner-icon">${icon(kind === "ok" ? "check" : kind === "dup" ? "alert" : "x", 26)}</div>
@@ -695,7 +695,7 @@ async function processScan(decodedText) {
  }
  playErrorSound();
  if (result.already_checked_in) showScanBanner("dup", result.data);
- else showScanBanner("err", null, result.error || "QR Code inválido.");
+ else showScanBanner("err", null, result.error || "Este QR Code não é do GateFlow.");
 }
 
 function onQrScanSuccess(decodedText) {

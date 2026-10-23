@@ -51,13 +51,13 @@
         <section class="auth-panel" id="panel-signin" role="tabpanel" aria-labelledby="tab-signin" {{ 'hidden' if panel != 'signin' else '' }}>
           <form method="POST" action="{{ url_for('page_login') }}">
             <h1>Bem-vindo de volta</h1>
-            <p class="auth-sub">Acesso único para Administradores, Organizadores e Porteiros.</p>
+            <p class="auth-sub">Entre com o seu utilizador e a senha.</p>
 
             {% if error %}
             <div class="auth-error" role="alert">{{ icon('alert') }}<span>{{ error }}</span></div>
             {% endif %}
 
-            <label for="username">Usuário</label>
+            <label for="username">Utilizador</label>
             <input type="text" id="username" name="username" value="{{ request.form.username if error else '' }}" autocomplete="username" required {{ 'autofocus' if panel == 'signin' else '' }} />
 
             <label for="password">Senha</label>
@@ -87,7 +87,7 @@
             <label for="email">E-mail *</label>
             <input type="email" id="email" name="email" required placeholder="Ex: maria@empresa.com" value="{{ request.form.email if signup_error else '' }}" autocomplete="email" />
 
-            <label for="signup_username">Usuário (login) *</label>
+            <label for="signup_username">Utilizador (para entrar) *</label>
             <input type="text" id="signup_username" name="username" required placeholder="Ex: maria.eventos" value="{{ request.form.username if signup_error else '' }}" autocomplete="off" />
 
             <label for="phone">Telefone / WhatsApp</label>

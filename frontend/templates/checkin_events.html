@@ -47,7 +47,7 @@
 {% endcall %}
 
   {% if initial_events is not none %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // Eventos já carregados no servidor (SSR).
     window.__INITIAL_EVENTS__ = {{ initial_events|tojson }};
   </script>

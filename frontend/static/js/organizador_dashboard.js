@@ -9,7 +9,8 @@ async function loadDashboard() {
 
   if (!result.success) {
     listEl.innerHTML = `<div class="empty-card"><p>Não foi possível carregar os eventos. ${escapeHtml(result.error || "")}</p>
-      <button class="btn btn-secondary" type="button" onclick="loadDashboard()">${icon("refresh")} Tentar de novo</button></div>`;
+      <button class="btn btn-secondary" type="button" data-retry-dashboard>${icon("refresh")} Tentar de novo</button></div>`;
+    listEl.querySelector("[data-retry-dashboard]")?.addEventListener("click", loadDashboard);
     return;
   }
 

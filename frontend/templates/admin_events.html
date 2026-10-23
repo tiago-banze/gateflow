@@ -102,7 +102,7 @@
   </div>
 
   {% if initial_events is not none %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // Eventos já carregados no servidor (SSR): pinta a lista real no primeiro paint.
     window.__INITIAL_EVENTS__ = {{ initial_events|tojson }};
   </script>

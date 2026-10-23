@@ -47,7 +47,7 @@
     <div class="list-card">
       <button type="button" class="list-row" data-sheet-open="add-guests-sheet"{% if event.status.code == 'encerrado' %} disabled{% endif %}>
         <span class="list-row-icon">{{ icon('user-plus') }}</span>
-        <span class="list-row-body"><span class="list-row-title">Adicionar convidados</span><span class="list-row-sub">Um a um, cortesia/VIP ou por planilha</span></span>
+        <span class="list-row-body"><span class="list-row-title">Adicionar convidados</span><span class="list-row-sub">Um a um, cortesia/VIP ou por lista</span></span>
         <span class="list-row-end">{{ icon('chevron-right') }}</span>
       </button>
       <a class="list-row" href="#convites" data-goto-tab="convites">
@@ -167,7 +167,7 @@
       <div class="seg-inline" role="tablist" id="add-mode-tabs">
         <button type="button" role="tab" data-mode="manual" aria-selected="true">Um a um</button>
         <button type="button" role="tab" data-mode="courtesy" aria-selected="false">Cortesia / VIP</button>
-        <button type="button" role="tab" data-mode="import" aria-selected="false">Planilha</button>
+        <button type="button" role="tab" data-mode="import" aria-selected="false">Lista</button>
       </div>
 
       <form id="form-new-guest" data-mode-panel="manual" novalidate>

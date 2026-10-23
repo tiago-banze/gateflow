@@ -181,7 +181,7 @@
     <div class="rsvp-footer">Powered by GateFlow</div>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const guestData = {
       companionsAllowed: {{ (guest.companions_allowed or 0) | tojson }},
       eventDate: {{ guest.event_date | tojson }},

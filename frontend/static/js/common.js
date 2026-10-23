@@ -106,7 +106,7 @@ async function apiRequest(path, options = {}) {
  return {
  success: false,
  status: response.status,
- error: "Resposta inválida do servidor.",
+ error: "Não conseguimos ler a resposta. Tente outra vez.",
  };
  }
 
@@ -139,7 +139,7 @@ async function apiRequest(path, options = {}) {
  return {
  success: false,
  status: 0,
- error: "Não foi possível conectar ao servidor. Verifique a rede e o IP do backend.",
+ error: "Sem ligação ao GateFlow. Verifique a internet e tente outra vez.",
  };
  }
 }

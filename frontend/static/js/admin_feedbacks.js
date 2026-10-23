@@ -18,7 +18,7 @@ async function loadPendingFeedbacks() {
   const listEl = document.getElementById("pending-feedbacks-list");
   const result = await apiRequest("/api/admin/feedbacks/pending");
   if (!result.success) {
-    listEl.innerHTML = `<p class="empty-state">Erro ao carregar depoimentos: ${escapeHtml(result.error || "desconhecido")}</p>`;
+    listEl.innerHTML = `<p class="empty-state">Não foi possível carregar os depoimentos: ${escapeHtml(result.error || "desconhecido")}</p>`;
     return;
   }
   renderPendingFeedbacks(result.data || []);

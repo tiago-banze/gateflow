@@ -26,11 +26,11 @@ async function handleInvalidateAllSessions() {
  if (!result.success) {
  btn.disabled = false;
  btn.textContent = " Encerrar Todas as Sessões";
- showToast(result.error || "Erro ao encerrar sessões.", "error");
+ showToast(result.error || "Não foi possível terminar as sessões.", "error");
  return;
  }
 
- showToast("Todas as sessões foram encerradas. Redirecionando para o login...", "success", 2500);
+ showToast("Sessões terminadas. A levar ao login…", "success", 2500);
  setTimeout(() => { window.location.href = "/login"; }, 1500);
 }
 
@@ -39,13 +39,13 @@ async function loadUsers() {
  const result = await apiRequest("/api/admin/users");
 
  if (!result.success) {
- listEl.innerHTML = `<div class="empty-state">Erro ao carregar usuários.</div>`;
+ listEl.innerHTML = `<div class="empty-state">Não foi possível carregar os utilizadores.</div>`;
  return;
  }
 
  const users = result.data || [];
  if (users.length === 0) {
- listEl.innerHTML = `<div class="empty-state">Nenhum usuário cadastrado.</div>`;
+ listEl.innerHTML = `<div class="empty-state">Ainda não há utilizadores.</div>`;
  return;
  }
 
@@ -88,7 +88,7 @@ async function handleCreateUser(e) {
  const password = document.getElementById("user-password").value;
 
  if (!username || !role || !password) {
- showToast("Preencha todos os campos obrigatórios.", "error");
+ showToast("Falta preencher algum campo.", "error");
  return;
  }
  if (password.length < 8) {
@@ -105,14 +105,14 @@ async function handleCreateUser(e) {
  });
 
  btn.disabled = false;
- btn.textContent = "Criar Usuário";
+ btn.textContent = "Criar utilizador";
 
  if (!result.success) {
- showToast(result.error || "Erro ao criar usuário.", "error");
+ showToast(result.error || "Não foi possível criar o utilizador.", "error");
  return;
  }
 
- showToast(`Usuário "${username}" criado com sucesso!`, "success");
+ showToast(`Utilizador "${username}" criado.`, "success");
  document.getElementById("form-new-user").reset();
  loadUsers();
 }

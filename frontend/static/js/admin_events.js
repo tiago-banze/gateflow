@@ -34,7 +34,7 @@ async function loadEvents({ silent = false } = {}) {
  // Numa revalidação silenciosa, um erro não deve derrubar a lista que
  // já está na tela (possivelmente vinda do SSR) — só loga e mantém.
  if (!silent) {
- renderEventsListWithFade(listEl, `<div class="empty-state">Erro ao carregar eventos: ${escapeHtml(result.error || "desconhecido")}</div>`);
+ renderEventsListWithFade(listEl, `<div class="empty-state">Não foi possível carregar os eventos: ${escapeHtml(result.error || "desconhecido")}</div>`);
  }
  return;
  }
@@ -98,7 +98,7 @@ async function handleCreateEvent(e) {
  const description = document.getElementById("event-description").value.trim();
 
  if (!name || !eventDate) {
- showToast("Preencha os campos obrigatórios (Nome e Data).", "error");
+ showToast("Indique pelo menos o nome e a data.", "error");
  return;
  }
 
@@ -118,7 +118,7 @@ async function handleCreateEvent(e) {
  return;
  }
 
- showToast("Evento criado com sucesso!", "success");
+ showToast("Evento criado!", "success");
  document.getElementById("form-new-event").reset();
  if (typeof closeSheet === "function") closeSheet("new-event-sheet");
  loadEvents();
@@ -169,7 +169,7 @@ async function handleSaveEditEvent(e) {
  const eventDate = document.getElementById("edit-event-date").value;
 
  if (!name || !eventDate) {
- showToast("Preencha os campos obrigatórios (Nome e Data).", "error");
+ showToast("Indique pelo menos o nome e a data.", "error");
  return;
  }
 
@@ -189,7 +189,7 @@ async function handleSaveEditEvent(e) {
  return;
  }
 
- showToast("Evento atualizado com sucesso!", "success");
+ showToast("Evento atualizado.", "success");
  closeEditEventModal();
  loadEvents();
 }

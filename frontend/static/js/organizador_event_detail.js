@@ -438,7 +438,7 @@ async function handleSaveEvent(e) {
     invite_video_url: document.getElementById("edit-video-url").value.trim(),
   };
   if (!payload.name || !payload.event_date || !payload.location || !payload.organizer_display_name) {
-    showToast("Preencha nome, data, local e organizador.", "error");
+    showToast("Falta preencher o nome, a data, o local ou o organizador.", "error");
     return;
   }
   btn.disabled = true;
@@ -470,7 +470,7 @@ async function handleCreateGuestManual(e) {
   const phone = document.getElementById("guest-phone").value.trim();
   const email = document.getElementById("guest-email").value.trim();
   const companionsAllowed = parseInt(document.getElementById("guest-companions").value || "0", 10);
-  if (!full_name) { showToast("O nome é obrigatório.", "error"); return; }
+  if (!full_name) { showToast("Indique o nome.", "error"); return; }
   if (!phone && !email) {
     if (!confirm("Sem telemóvel nem e-mail não será possível enviar o convite a este convidado. Adicionar mesmo assim?")) return;
   }
@@ -503,7 +503,7 @@ async function handleCreateGuestManual(e) {
 async function handleIssueCourtesy(e) {
   e.preventDefault();
   const fullName = document.getElementById("courtesy-name").value.trim();
-  if (!fullName) { showToast("O nome é obrigatório.", "error"); return; }
+  if (!fullName) { showToast("Indique o nome.", "error"); return; }
   const res = await apiRequest(`/api/organizador/events/${EVENT_ID}/guests/courtesy`, {
     method: "POST",
     body: JSON.stringify({
@@ -601,7 +601,7 @@ async function downloadInvitesPdf() {
     window.URL.revokeObjectURL(url);
     showToast("PDF de convites gerado.", "success");
   } catch (err) {
-    showToast("Erro de ligação ao gerar o PDF.", "error");
+    showToast("Sem ligação. Verifique a internet e tente outra vez.", "error");
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -611,7 +611,7 @@ async function downloadInvitesPdf() {
 async function downloadTemplate(kind = "xlsx") {
   try {
     const response = await fetch(`${window.location.origin}/api/events/template-${kind}`, { credentials: "same-origin" });
-    if (!response.ok) { showToast("Erro ao baixar o modelo.", "error"); return; }
+    if (!response.ok) { showToast("Não foi possível descarregar o modelo.", "error"); return; }
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -622,6 +622,6 @@ async function downloadTemplate(kind = "xlsx") {
     a.remove();
     window.URL.revokeObjectURL(url);
   } catch (err) {
-    showToast("Erro de ligação ao baixar o modelo.", "error");
+    showToast("Sem ligação. Verifique a internet e tente outra vez.", "error");
   }
 }

@@ -15,6 +15,7 @@ import shutil
 import time
 import hashlib
 import hmac
+import secrets
 import traceback
 from datetime import datetime, timedelta
 from functools import wraps
@@ -22,7 +23,7 @@ from urllib.parse import urlparse, quote
 
 from flask import (
     Flask, request, jsonify, render_template, send_file, send_from_directory, abort,
-    session, redirect, url_for, Response,
+    session, redirect, url_for, Response, g,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -89,6 +90,7 @@ def inject_brand_assets():
     return {
         "gateflow_logo_available": os.path.exists(GATEFLOW_LOGO_PATH),
         "messaging_enabled": config.MESSAGING_ENABLED,
+        "csp_nonce": getattr(g, "csp_nonce", ""),
     }
 
 
@@ -170,6 +172,34 @@ def purge_expired_events_periodically():
 
 
 @app.before_request
+def make_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+def _security_log(event, **fields):
+    """Registo de eventos de segurança (aparece nos Logs da Vercel). Nunca inclui senhas."""
+    details = " ".join(f"{k}={str(v)[:80]!r}" for k, v in fields.items())
+    app.logger.warning("SEGURANCA %s %s", event, details)
+
+
+def _content_security_policy(nonce):
+    return "; ".join([
+        "default-src 'self'",
+        f"script-src 'self' 'nonce-{nonce}' https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https://www.gravatar.com",
+        "media-src 'self' blob:",
+        "connect-src 'self'",
+        "worker-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
+
+
+@app.before_request
 def reject_cross_site_writes():
     """
     Defesa em profundidade contra CSRF: pedidos que alteram dados só são
@@ -183,7 +213,8 @@ def reject_cross_site_writes():
             if config.PUBLIC_BASE_URL:
                 allowed_hosts.add(urlparse(config.PUBLIC_BASE_URL).netloc)
             if urlparse(origin).netloc not in allowed_hosts:
-                return jsonify({"success": False, "error": "Origem do pedido não permitida."}), 403
+                _security_log("origem_bloqueada", path=request.path, origin=origin, ip=get_client_ip(request))
+                return jsonify({"success": False, "error": "Não foi possível concluir o pedido. Recarregue a página e tente de novo."}), 403
 
 
 @app.after_request
@@ -192,6 +223,8 @@ def add_security_headers(response):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
+    csp_name = "Content-Security-Policy-Report-Only" if os.environ.get("GATEFLOW_CSP_REPORT_ONLY") == "1" else "Content-Security-Policy"
+    response.headers.setdefault(csp_name, _content_security_policy(getattr(g, "csp_nonce", "")))
     if config.IS_SERVERLESS:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     if request.path.startswith(("/api/", "/admin", "/organizador", "/checkin")) or request.path == "/login":
@@ -294,6 +327,7 @@ def role_required_page(*allowed_roles):
             if not user:
                 return redirect(url_for("page_login", next=request.path))
             if user["role"] not in allowed_roles:
+                _security_log("acesso_negado", user=user["username"], role=user["role"], path=request.path)
                 return render_template("error_403.html", current_user=user), 403
             return view_func(*args, **kwargs)
         return wrapper
@@ -307,7 +341,7 @@ def login_required_api(view_func):
         if not get_current_user():
             return jsonify({
                 "success": False,
-                "error": "Sessão expirada ou não autenticada. Faça login novamente.",
+                "error": "A sua sessão terminou. Entre outra vez para continuar.",
                 "auth_required": True,
             }), 401
         return view_func(*args, **kwargs)
@@ -323,13 +357,14 @@ def role_required_api(*allowed_roles):
             if not user:
                 return jsonify({
                     "success": False,
-                    "error": "Sessão expirada ou não autenticada. Faça login novamente.",
+                    "error": "A sua sessão terminou. Entre outra vez para continuar.",
                     "auth_required": True,
                 }), 401
             if user["role"] not in allowed_roles:
+                _security_log("acesso_negado", user=user["username"], role=user["role"], path=request.path)
                 return jsonify({
                     "success": False,
-                    "error": "Acesso negado: seu perfil não tem permissão para esta ação.",
+                    "error": "Esta ação não está disponível para o seu perfil.",
                 }), 403
             return view_func(*args, **kwargs)
         return wrapper
@@ -343,20 +378,29 @@ def role_required_api(*allowed_roles):
 @app.errorhandler(404)
 def handle_404(_error):
     if request.path.startswith("/api/"):
-        return jsonify({"success": False, "error": "Recurso não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos o que procura."}), 404
     return render_template("error_404.html", current_user=get_current_user()), 404
+
+
+@app.errorhandler(429)
+def handle_429(_error):
+    _security_log("limite_excedido", path=request.path, ip=get_client_ip(request))
+    message = "Muitos pedidos seguidos. Espere um pouco e tente de novo."
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": message}), 429
+    return message, 429
 
 
 @app.errorhandler(413)
 def handle_413(_error):
-    return jsonify({"success": False, "error": "Arquivo excede o tamanho máximo permitido (10MB)."}), 413
+    return jsonify({"success": False, "error": "O ficheiro é demasiado grande (máximo 10 MB)."}), 413
 
 
 @app.errorhandler(500)
 def handle_500(error):
     app.logger.error("Erro interno: %s", traceback.format_exc())
     if request.path.startswith("/api/"):
-        return jsonify({"success": False, "error": "Erro interno do servidor."}), 500
+        return jsonify({"success": False, "error": "Algo correu mal do nosso lado. Tente outra vez daqui a pouco."}), 500
     return render_template("error_500.html"), 500
 
 
@@ -434,10 +478,11 @@ def page_login():
 
         is_locked, seconds_remaining = login_attempt_tracker.is_locked(username, client_ip)
         if is_locked:
+            _security_log("login_bloqueado", user=username, ip=client_ip)
             minutes_remaining = max(1, seconds_remaining // 60)
             error = (
-                f"Muitas tentativas de login falhas. Tente novamente em "
-                f"aproximadamente {minutes_remaining} minuto(s)."
+                f"Muitas tentativas falhadas. Por segurança, espere "
+                f"cerca de {minutes_remaining} minuto(s) e tente de novo."
             )
             intent = request.args.get("intent", "porteiro")
             return render_template("login.html", error=error, intent=intent, active_panel="signin")
@@ -445,6 +490,7 @@ def page_login():
         user = db.get_user_by_username(username) if username else None
         if user and check_password_hash(user["password_hash"], password):
             login_attempt_tracker.register_success(username, client_ip)
+            app.logger.info("SEGURANCA login_ok user=%r role=%r", user["username"], user["role"])
             session.clear()
             session.permanent = True
             session["user_id"] = user["id"]
@@ -454,7 +500,8 @@ def page_login():
             return redirect(_redirect_url_for_role(user["role"]))
 
         login_attempt_tracker.register_failure(username, client_ip)
-        error = "Usuário ou senha inválidos."
+        _security_log("login_falhou", user=username, ip=client_ip)
+        error = "Utilizador ou senha incorretos."
 
     # 'intent' só ajusta o texto exibido no formulário (não concede acesso —
     # o papel real vem do banco de dados após a autenticação). 'panel'
@@ -488,19 +535,19 @@ def page_organizador_signup():
         email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
         if security.too_many(db, "signup_ip", get_client_ip(request), 10, 3600):
-            error = "Demasiados cadastros deste dispositivo. Tente novamente mais tarde."
+            error = "Já foram criadas várias contas daqui. Tente mais tarde."
         elif not full_name or not email or not username or not password:
-            error = "Preencha nome completo, e-mail, usuário e senha."
+            error = "Falta preencher algum campo: nome, e-mail, utilizador ou senha."
         elif validate_username(username):
             error = validate_username(username)
         elif not email_pattern.match(email):
             error = "Informe um e-mail válido."
         elif len(password) < 8:
-            error = "A senha deve ter pelo menos 8 caracteres."
+            error = "Escolha uma senha com pelo menos 8 caracteres."
         elif password != password_confirm:
             error = "As senhas não coincidem."
         elif db.username_exists(username):
-            error = "Este nome de usuário já está em uso."
+            error = "Esse nome de utilizador já está em uso."
         elif db.email_exists(email):
             error = "Já existe uma conta com este e-mail."
         else:
@@ -647,7 +694,7 @@ def admin_download_site_qrcode():
         img.save(buffer, format="PNG")
     except Exception:
         app.logger.exception("Falha ao gerar QR Code do site.")
-        return jsonify({"success": False, "error": "Falha ao gerar o QR Code."}), 500
+        return jsonify({"success": False, "error": "Não foi possível gerar o QR Code."}), 500
 
     buffer.seek(0)
     return send_file(buffer, mimetype="image/png", download_name="gateflow-qrcode-site.png")
@@ -765,12 +812,12 @@ def api_organizador_create_event():
         if not name or not organizer_display_name or not location or not event_date:
             return jsonify({
                 "success": False,
-                "error": "Nome do Evento, Nome do Organizador/Empresa, Localização e Data/Hora são obrigatórios.",
+                "error": "Preencha o nome do evento, o organizador, o local e a data.",
             }), 400
         if len(name) > 150 or len(organizer_display_name) > 150 or len(location) > 250 or len(description) > 2000:
-            return jsonify({"success": False, "error": "Um dos campos excede o tamanho máximo permitido."}), 400
+            return jsonify({"success": False, "error": "Um dos campos está demasiado longo."}), 400
         if not _is_valid_iso_datetime(event_date):
-            return jsonify({"success": False, "error": "Data/Hora inválida."}), 400
+            return jsonify({"success": False, "error": "Confira a data e a hora."}), 400
 
         event = db.create_event_full(
             current_user["id"], name, organizer_display_name, location, event_date, description=description,
@@ -782,7 +829,7 @@ def api_organizador_create_event():
         return jsonify({"success": False, "error": str(exc)}), 500
     except Exception:  # noqa: BLE001
         app.logger.error("Erro inesperado ao criar evento (organizador): %s", traceback.format_exc())
-        return jsonify({"success": False, "error": "Erro ao criar o evento. Tente novamente."}), 500
+        return jsonify({"success": False, "error": "Não foi possível criar o evento. Tente outra vez."}), 500
 
 
 @app.route("/api/organizador/events/<event_id>", methods=["GET"])
@@ -792,7 +839,7 @@ def api_organizador_get_event(event_id):
     try:
         current_user = get_current_user()
         if not db.event_belongs_to_organizador(event_id, current_user["id"]):
-            return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento na sua conta."}), 404
 
         event = db.get_event(event_id)
         event["stats"] = db.get_event_stats(event_id)
@@ -819,12 +866,12 @@ def api_organizador_update_event(event_id):
         current_user = get_current_user()
         current_event = db.get_event(event_id)
         if not current_event or current_event.get("organizador_id") != current_user["id"]:
-            return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento na sua conta."}), 404
 
         if event_status.is_past(current_event.get("event_date")):
             return jsonify({
                 "success": False,
-                "error": "Este evento já foi encerrado. Edição bloqueada, apenas relatórios continuam disponíveis.",
+                "error": "Este evento já terminou e não pode ser editado. Os relatórios continuam disponíveis.",
                 "event_ended": True,
             }), 403
 
@@ -844,7 +891,7 @@ def api_organizador_update_event(event_id):
 
         event, owned = db.update_event_by_organizador(event_id, current_user["id"], **update_fields)
         if not owned:
-            return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento na sua conta."}), 404
 
         event["status"] = event_status.compute_event_status(event.get("event_date"))
         return jsonify({"success": True, "data": event})
@@ -861,7 +908,7 @@ def _get_owned_event(event_id, organizador_id):
     """
     event = db.get_event(event_id)
     if not event or event.get("organizador_id") != organizador_id:
-        return None, (jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404)
+        return None, (jsonify({"success": False, "error": "Não encontrámos este evento na sua conta."}), 404)
     return event, None
 
 
@@ -905,13 +952,13 @@ def api_organizador_create_guest_manual(event_id):
         table_number = (payload.get("table_number") or "").strip()
 
         if not full_name:
-            return jsonify({"success": False, "error": "O nome completo é obrigatório."}), 400
+            return jsonify({"success": False, "error": "Indique o nome completo."}), 400
 
         guest, is_duplicate = db.create_single_guest(event_id, full_name, email, phone, role, table_number)
         if is_duplicate:
             return jsonify({
                 "success": False,
-                "error": f"Já existe um convidado igual neste evento: {guest['full_name']}.",
+                "error": f"{guest['full_name']} já está na lista deste evento.",
                 "data": guest,
             }), 409
 
@@ -925,9 +972,9 @@ def api_organizador_create_guest_manual(event_id):
         return jsonify({"success": True, "data": guest}), 201
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         app.logger.error("Erro inesperado no cadastro manual (organizador): %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao cadastrar convidado: {exc}"}), 500
+        return jsonify({"success": False, "error": "Não foi possível guardar o convidado. Tente outra vez."}), 500
 
 
 def _handle_guest_import(event_id):
@@ -949,7 +996,7 @@ def _handle_guest_import(event_id):
             rows = guest_import.rows_from_text(payload.get("text") or "")
         guests_data, issues = guest_import.parse_rows(rows)
         if not guests_data:
-            return jsonify({"success": False, "error": "Nenhum convidado válido encontrado.", "issues": issues}), 400
+            return jsonify({"success": False, "error": "Não encontrámos nenhum convidado válido na lista.", "issues": issues}), 400
 
         result = db.import_guests_upsert(event_id, guests_data, dry_run=preview)
         if preview:
@@ -988,7 +1035,7 @@ def _handle_guest_import(event_id):
         return jsonify({"success": False, "error": str(exc)}), 500
     except Exception:  # noqa: BLE001
         app.logger.error("Erro na importação: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": "Erro ao processar a lista. Verifique o formato e tente novamente."}), 500
+        return jsonify({"success": False, "error": "Não conseguimos ler a lista. Confira se segue o modelo e tente outra vez."}), 500
 
 
 @app.route("/api/organizador/events/<event_id>/import", methods=["POST"])
@@ -1057,7 +1104,7 @@ def api_create_feedback():
     publicamente depois de um admin aprovar em /admin/depoimentos.
     """
     if security.too_many(db, "feedback_ip", get_client_ip(request), 5, 3600):
-        return jsonify({"success": False, "error": "Demasiados envios. Tente novamente mais tarde."}), 429
+        return jsonify({"success": False, "error": "Já recebemos vários envios seus. Tente mais tarde."}), 429
     payload = request.get_json(force=True, silent=True) or {}
     name = (payload.get("name") or "").strip()
     email = (payload.get("email") or "").strip()
@@ -1073,9 +1120,9 @@ def api_create_feedback():
             "error": f"Indique o seu nome (até {FEEDBACK_NAME_MAX_LENGTH} caracteres).",
         }), 400
     if not email or not _FEEDBACK_EMAIL_PATTERN.match(email) or len(email) > 150:
-        return jsonify({"success": False, "error": "Indique um e-mail válido."}), 400
+        return jsonify({"success": False, "error": "Esse e-mail parece estar incorreto."}), 400
     if rating < 1 or rating > 5:
-        return jsonify({"success": False, "error": "A nota deve ser de 1 a 5 estrelas."}), 400
+        return jsonify({"success": False, "error": "Escolha de 1 a 5 estrelas."}), 400
     if not comment:
         return jsonify({"success": False, "error": "Escreva o seu comentário."}), 400
     if len(comment) > FEEDBACK_COMMENT_MAX_LENGTH:
@@ -1164,13 +1211,13 @@ def api_checkin_live_stats(event_id):
     if current_user["role"] == "porteiro":
         event = db.get_event(event_id)
         if not _porteiro_can_access_event(current_user, event):
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     elif current_user["role"] == "organizador":
         if not db.event_belongs_to_organizador(event_id, current_user["id"]):
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     stats = db.get_event_live_checkin_stats(event_id)
     if stats is None:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     return jsonify({"success": True, "data": stats})
 
 
@@ -1192,8 +1239,8 @@ def _issue_courtesy(event_id, payload):
         qr_path = generate_guest_qrcode(event_id, guest["id"])
         db.update_guest_qr_path(guest["id"], qr_path)
         guest["qr_code_path"] = qr_path
-    except QRCodeGenerationError as exc:
-        return jsonify({"success": False, "error": f"Convidado criado, mas falhou ao gerar QR Code: {exc}"}), 500
+    except QRCodeGenerationError:
+        return jsonify({"success": False, "error": "Convidado guardado, mas não foi possível gerar o QR Code."}), 500
 
     if guest.get("email"):
         try:
@@ -1358,7 +1405,7 @@ def api_organizador_send_guest_invite(event_id, guest_id):
         return error
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
     return _single_notification_response(event, guest, "invite")
 
 
@@ -1372,7 +1419,7 @@ def api_organizador_guest_rsvp_link(event_id, guest_id):
         return error
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
     url = _prepare_invite(guest)
     message = _manual_invite_message(event, guest, url)
     phone = normalize_msisdn(guest.get("phone"))
@@ -1397,7 +1444,7 @@ def api_organizador_mark_invite_sent_manually(event_id, guest_id):
     if error:
         return error
     if not db.get_guest_by_event(event_id, guest_id):
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
     payload = request.get_json(silent=True) or {}
     channel = "sms" if payload.get("channel") == "sms" else "whatsapp"
     db.record_guest_notification(guest_id, "invite", True, [f"{channel} (manual)"])
@@ -1482,9 +1529,9 @@ def api_organizador_send_guest_reminder(event_id, guest_id):
         return error
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
     if guest["rsvp_status"] != "confirmed":
-        return jsonify({"success": False, "error": "Só é possível enviar lembrete a convidados que confirmaram presença."}), 400
+        return jsonify({"success": False, "error": "Só enviamos lembretes a quem confirmou presença."}), 400
     return _single_notification_response(event, guest, "reminder")
 
 
@@ -1514,7 +1561,7 @@ def api_organizador_set_guest_companions(event_id, guest_id):
         return jsonify({"success": False, "error": "companions_allowed deve ser um número inteiro."}), 400
     guest = db.set_guest_companions_allowed(event_id, guest_id, companions_allowed)
     if not guest:
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
     return jsonify({"success": True, "data": guest})
 
 
@@ -1588,16 +1635,16 @@ def rsvp_qrcode(token):
 def api_rsvp_respond(token):
     guest = db.get_guest_by_rsvp_token(token)
     if not guest:
-        return jsonify({"success": False, "error": "Convite não encontrado."}), 404
+        return jsonify({"success": False, "error": "Este convite não existe ou o link está errado."}), 404
 
     deadline = db.rsvp_deadline_for_event(guest)
     if deadline and datetime.utcnow() > deadline:
-        return jsonify({"success": False, "error": "O prazo para confirmar presença neste evento já terminou."}), 410
+        return jsonify({"success": False, "error": "O prazo para confirmar presença já passou. Fale com o organizador."}), 410
 
     payload = request.get_json(force=True, silent=True) or {}
     response = payload.get("response")
     if response not in ("confirmed", "declined"):
-        return jsonify({"success": False, "error": "Resposta inválida."}), 400
+        return jsonify({"success": False, "error": "Não percebemos a resposta. Tente outra vez."}), 400
 
     try:
         companions_confirmed = max(0, min(int(payload.get("companions_confirmed", 0)), guest.get("companions_allowed") or 0))
@@ -1675,7 +1722,7 @@ def api_organizador_issue_courtesy(event_id):
     """Emite um convidado Cortesia/VIP (Modelo A), respeitando a cota do evento, e envia o convite em PDF por e-mail se houver endereco."""
     current_user = get_current_user()
     if not db.event_belongs_to_organizador(event_id, current_user["id"]):
-        return jsonify({"success": False, "error": "Evento não encontrado ou não pertence a você."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento na sua conta."}), 404
     payload = request.get_json(force=True, silent=True) or {}
     return _issue_courtesy(event_id, payload)
 
@@ -1686,7 +1733,7 @@ def api_admin_issue_courtesy(event_id):
     """Emite um convidado Cortesia/VIP (Modelo A) pelo Admin."""
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     payload = request.get_json(force=True, silent=True) or {}
     return _issue_courtesy(event_id, payload)
 
@@ -1734,7 +1781,7 @@ def api_organizador_create_porteiro():
                 "error": f"A senha provisória deve ter pelo menos {MIN_PASSWORD_LENGTH} caracteres.",
             }), 400
         if db.username_exists(username):
-            return jsonify({"success": False, "error": "Já existe um usuário com esse login."}), 409
+            return jsonify({"success": False, "error": "Esse nome de utilizador já está em uso."}), 409
 
         password_hash = generate_password_hash(password)
         user = db.create_user(
@@ -1813,9 +1860,9 @@ def api_download_guest_template():
             download_name="modelo_convidados_gateflow.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         app.logger.error("Erro ao gerar template xlsx: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao gerar o modelo: {exc}"}), 500
+        return jsonify({"success": False, "error": "Não foi possível gerar o modelo. Tente outra vez."}), 500
 
 
 @app.route("/api/events", methods=["POST"])
@@ -1829,9 +1876,9 @@ def api_create_event():
         event_date = (payload.get("event_date") or "").strip()
 
         if not name:
-            return jsonify({"success": False, "error": "O nome do evento é obrigatório."}), 400
+            return jsonify({"success": False, "error": "Dê um nome ao evento."}), 400
         if not event_date:
-            return jsonify({"success": False, "error": "A data e hora do evento são obrigatórias."}), 400
+            return jsonify({"success": False, "error": "Indique a data e a hora do evento."}), 400
 
         event = db.create_event(name, location, description, event_date)
         return jsonify({"success": True, "data": event}), 201
@@ -1845,7 +1892,7 @@ def api_get_event(event_id):
     try:
         event = db.get_event(event_id)
         if not event:
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
         event["stats"] = db.get_event_stats(event_id)
         event["status"] = event_status.compute_event_status(event.get("event_date"))
         return jsonify({"success": True, "data": event})
@@ -1859,11 +1906,11 @@ def api_update_event(event_id):
     try:
         current_event = db.get_event(event_id)
         if not current_event:
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
         if event_status.is_past(current_event.get("event_date")):
             return jsonify({
                 "success": False,
-                "error": "Este evento já foi encerrado. Edição bloqueada, apenas relatórios continuam disponíveis.",
+                "error": "Este evento já terminou e não pode ser editado. Os relatórios continuam disponíveis.",
                 "event_ended": True,
             }), 403
 
@@ -1874,13 +1921,13 @@ def api_update_event(event_id):
         event_date = (payload.get("event_date") or "").strip()
 
         if not name:
-            return jsonify({"success": False, "error": "O nome do evento é obrigatório."}), 400
+            return jsonify({"success": False, "error": "Dê um nome ao evento."}), 400
         if not event_date:
-            return jsonify({"success": False, "error": "A data e hora do evento são obrigatórias."}), 400
+            return jsonify({"success": False, "error": "Indique a data e a hora do evento."}), 400
 
         event = db.update_event(event_id, name, location, description, event_date)
         if not event:
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
         event["status"] = event_status.compute_event_status(event.get("event_date"))
         return jsonify({"success": True, "data": event})
     except db.DatabaseError as exc:
@@ -1893,7 +1940,7 @@ def api_delete_event(event_id):
     try:
         deleted = db.delete_event(event_id)
         if not deleted:
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
         return jsonify({"success": True})
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -1908,7 +1955,7 @@ def api_delete_event(event_id):
 @limiter.limit("30 per minute")
 def api_import_guests(event_id):
     if not db.get_event(event_id):
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     return _handle_guest_import(event_id)
 
 
@@ -1922,7 +1969,7 @@ def api_create_guest_manual(event_id):
     """Cadastro manual de UM convidado pelo Admin (fora do fluxo de planilha)."""
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
 
     try:
         payload = request.get_json(force=True, silent=True) or {}
@@ -1933,7 +1980,7 @@ def api_create_guest_manual(event_id):
         table_number = (payload.get("table_number") or "").strip()
 
         if not full_name:
-            return jsonify({"success": False, "error": "O nome completo é obrigatório."}), 400
+            return jsonify({"success": False, "error": "Indique o nome completo."}), 400
 
         guest, is_duplicate = db.create_single_guest(
             event_id, full_name, email, phone, role, table_number
@@ -1942,7 +1989,7 @@ def api_create_guest_manual(event_id):
         if is_duplicate:
             return jsonify({
                 "success": False,
-                "error": f"Já existe um convidado igual neste evento: {guest['full_name']}.",
+                "error": f"{guest['full_name']} já está na lista deste evento.",
                 "data": guest,
             }), 409
 
@@ -1956,9 +2003,9 @@ def api_create_guest_manual(event_id):
         return jsonify({"success": True, "data": guest}), 201
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
-    except Exception as exc:  # noqa: BLE001 — garante resposta JSON mesmo em erro inesperado
+    except Exception:  # noqa: BLE001 — garante resposta JSON mesmo em erro inesperado
         app.logger.error("Erro inesperado no cadastro manual de convidado: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao cadastrar convidado: {exc}"}), 500
+        return jsonify({"success": False, "error": "Não foi possível guardar o convidado. Tente outra vez."}), 500
 
 
 @app.route("/api/events/<event_id>/guests/<guest_id>", methods=["PUT"])
@@ -1966,7 +2013,7 @@ def api_create_guest_manual(event_id):
 def api_update_guest(event_id, guest_id):
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
 
     try:
         payload = request.get_json(force=True, silent=True) or {}
@@ -1977,27 +2024,27 @@ def api_update_guest(event_id, guest_id):
         table_number = (payload.get("table_number") or "").strip()
 
         if not full_name:
-            return jsonify({"success": False, "error": "O nome completo é obrigatório."}), 400
+            return jsonify({"success": False, "error": "Indique o nome completo."}), 400
 
         guest, is_duplicate = db.update_guest(
             event_id, guest_id, full_name, email, phone, role, table_number
         )
 
         if guest is None and not is_duplicate:
-            return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
         if is_duplicate:
             return jsonify({
                 "success": False,
-                "error": f"Já existe outro convidado igual neste evento: {guest['full_name']}.",
+                "error": f"{guest['full_name']} já está na lista deste evento.",
                 "data": guest,
             }), 409
 
         return jsonify({"success": True, "data": guest})
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         app.logger.error("Erro inesperado ao editar convidado: %s", traceback.format_exc())
-        return jsonify({"success": False, "error": f"Erro ao editar convidado: {exc}"}), 500
+        return jsonify({"success": False, "error": "Não foi possível guardar as alterações. Tente outra vez."}), 500
 
 
 @app.route("/api/events/<event_id>/guests/<guest_id>", methods=["DELETE"])
@@ -2005,13 +2052,13 @@ def api_update_guest(event_id, guest_id):
 def api_delete_guest(event_id, guest_id):
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
 
     try:
         guest = db.get_guest_by_event(event_id, guest_id)
         deleted = db.delete_guest(event_id, guest_id)
         if not deleted:
-            return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
 
         # Remove o arquivo de QR Code órfão do disco, se existir (não crítico se falhar)
         if guest and guest.get("qr_code_path") and os.path.exists(guest["qr_code_path"]):
@@ -2037,14 +2084,14 @@ def api_send_guest_invite_email(event_id, guest_id):
     """
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
 
     guest = db.get_guest_by_event(event_id, guest_id)
     if not guest:
-        return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
 
     if not guest.get("email"):
-        return jsonify({"success": False, "error": "Este convidado não tem um e-mail cadastrado."}), 400
+        return jsonify({"success": False, "error": "Este convidado não tem e-mail registado."}), 400
 
     if not email_service.is_configured():
         return jsonify({
@@ -2054,9 +2101,9 @@ def api_send_guest_invite_email(event_id, guest_id):
 
     try:
         pdf_path = generate_invites_pdf(event, [guest])
-    except PDFGenerationError as exc:
+    except PDFGenerationError:
         db.mark_guest_invite_email_status(guest_id, "failed")
-        return jsonify({"success": False, "error": f"Falha ao gerar o PDF do convite: {exc}"}), 500
+        return jsonify({"success": False, "error": "Não foi possível gerar o PDF do convite. Tente outra vez."}), 500
 
     ok, error = email_service.send_courtesy_invite_email(
         guest["email"], guest["full_name"], event["name"], pdf_path
@@ -2079,10 +2126,10 @@ def api_send_guest_invite_email(event_id, guest_id):
 def api_list_guests(event_id):
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     current_user = get_current_user()
     if current_user["role"] == "porteiro" and not _porteiro_can_access_event(current_user, event):
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     try:
         search = request.args.get("search", "").strip()
         guests = db.list_guests(event_id, search=search or None)
@@ -2135,7 +2182,7 @@ def api_organizador_export_pdf(event_id):
 def api_export_pdf(event_id):
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     return _invites_pdf_response(event_id, event)
 
 
@@ -2143,7 +2190,7 @@ def _invites_pdf_response(event_id, event):
     try:
         guests = db.list_guests(event_id)
         if not guests:
-            return jsonify({"success": False, "error": "Este evento não possui convidados."}), 400
+            return jsonify({"success": False, "error": "Este evento ainda não tem convidados."}), 400
 
         pdf_path = generate_invites_pdf(event, guests)
 
@@ -2181,11 +2228,11 @@ def api_export_contingency_pdf(event_id):
     """
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     try:
         guests = db.list_guests_alphabetical(event_id)
         if not guests:
-            return jsonify({"success": False, "error": "Este evento não possui convidados."}), 400
+            return jsonify({"success": False, "error": "Este evento ainda não tem convidados."}), 400
 
         pdf_path = generate_contingency_pdf(event, guests)
 
@@ -2212,11 +2259,11 @@ def api_export_attendance_report(event_id):
     """Relatório de presença em CSV (quem compareceu / quem faltou) — útil após o evento encerrar."""
     event = db.get_event(event_id)
     if not event:
-        return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+        return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
     try:
         guests = db.list_guests(event_id)
         if not guests:
-            return jsonify({"success": False, "error": "Este evento não possui convidados."}), 400
+            return jsonify({"success": False, "error": "Este evento ainda não tem convidados."}), 400
 
         csv_content = generate_attendance_report_csv(event, guests)
         event_slug = slugify_filename(event["name"], fallback=event_id)
@@ -2242,15 +2289,15 @@ def api_checkin_manual(guest_id):
     try:
         guest_preview = db.get_guest(guest_id)
         if not guest_preview:
-            return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
 
         event = db.get_event(guest_preview["event_id"])
         if not _porteiro_can_access_event(get_current_user(), event):
-            return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
         if event and event_status.is_past(event.get("event_date")):
             return jsonify({
                 "success": False,
-                "error": "Este evento já foi encerrado. Não é possível fazer novos check-ins.",
+                "error": "Este evento já terminou, por isso não dá para registar mais entradas.",
                 "event_ended": True,
             }), 403
 
@@ -2260,11 +2307,11 @@ def api_checkin_manual(guest_id):
 
         success, message, guest = db.checkin_guest(guest_id, checkin_by=checkin_by)
         if message == "not_found":
-            return jsonify({"success": False, "error": "Convidado não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este convidado."}), 404
         if message == "already_checked_in":
             return jsonify({
                 "success": False,
-                "error": "Check-in já realizado anteriormente!",
+                "error": "Esta pessoa já entrou.",
                 "data": _with_party_info(guest),
                 "already_checked_in": True,
             }), 409
@@ -2288,11 +2335,11 @@ def api_checkin_qr():
 
         event = db.get_event(event_id)
         if not _porteiro_can_access_event(get_current_user(), event):
-            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+            return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
         if event and event_status.is_past(event.get("event_date")):
             return jsonify({
                 "success": False,
-                "error": "Este evento já foi encerrado. Não é possível fazer novos check-ins.",
+                "error": "Este evento já terminou, por isso não dá para registar mais entradas.",
                 "event_ended": True,
             }), 403
 
@@ -2300,21 +2347,21 @@ def api_checkin_qr():
         if not guest_id:
             return jsonify({
                 "success": False,
-                "error": "QR Code inválido ou não pertence a este sistema."
+                "error": "Este QR Code não é do GateFlow."
             }), 400
 
         guest = db.get_guest_by_event(event_id, guest_id)
         if not guest:
             return jsonify({
                 "success": False,
-                "error": "QR Code não corresponde a nenhum convidado deste evento."
+                "error": "Este QR Code não é de nenhum convidado deste evento."
             }), 404
 
         success, message, updated_guest = db.checkin_guest(guest_id, checkin_by=checkin_by)
         if message == "already_checked_in":
             return jsonify({
                 "success": False,
-                "error": f"Check-in já realizado! ({updated_guest['full_name']})",
+                "error": f"{updated_guest['full_name']} já entrou.",
                 "data": _with_party_info(updated_guest),
                 "already_checked_in": True,
             }), 409
@@ -2370,7 +2417,7 @@ def api_create_user():
                 "error": f"A senha provisória deve ter pelo menos {MIN_PASSWORD_LENGTH} caracteres.",
             }), 400
         if db.username_exists(username):
-            return jsonify({"success": False, "error": "Já existe um usuário com esse login."}), 409
+            return jsonify({"success": False, "error": "Esse nome de utilizador já está em uso."}), 409
 
         password_hash = generate_password_hash(password)
         user = db.create_user(username, password_hash, role, full_name=full_name)
@@ -2384,33 +2431,16 @@ def api_create_user():
 @role_required_api("admin")
 def api_invalidate_all_sessions():
     """
-    "Kill switch" de sessões: gera uma nova chave secreta e a torna ativa
-    imediatamente, invalidando TODAS as sessões existentes (inclusive a
-    do próprio admin que chamou esta rota — ele também precisará logar de
-    novo). Útil para encerrar o acesso de todos os aparelhos de uma vez
-    (ex: fim de um evento, dispositivo perdido/roubado, ou depois de
-    testes, antes de entregar os tablets para uso real).
+    "Kill switch" de sessões: apaga o token ativo de todos os utilizadores no banco,
+    por isso todas as sessões (inclusive a do admin) terminam já, em qualquer instância.
     """
-    try:
-        new_key = os.urandom(32).hex()
-        with open(config.SECRET_KEY_PATH, "w", encoding="utf-8") as f:
-            f.write(new_key)
-        app.secret_key = new_key
-
-        # IMPORTANTE: como a sessão é "permanente" (renovada a cada
-        # requisição), o Flask re-assinaria automaticamente o cookie
-        # desta própria resposta com a chave NOVA antes de enviá-la —
-        # o que manteria o admin que chamou esta rota ainda logado.
-        # Limpamos a sessão explicitamente para fechar essa brecha
-        # também para quem está fazendo a chamada agora.
-        session.clear()
-
-        return jsonify({
-            "success": True,
-            "message": "Todas as sessões foram encerradas. Será necessário fazer login novamente em todos os aparelhos.",
-        })
-    except OSError as exc:
-        return jsonify({"success": False, "error": f"Erro ao rotacionar a chave de sessão: {exc}"}), 500
+    db.invalidate_all_sessions()
+    _security_log("sessoes_terminadas", by=session.get("username", "?"))
+    session.clear()
+    return jsonify({
+        "success": True,
+        "message": "Todas as sessões foram terminadas. Todos têm de entrar outra vez.",
+    })
 
 
 if __name__ == "__main__":

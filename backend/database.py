@@ -1204,6 +1204,12 @@ def start_new_user_session(user_id):
     return token
 
 
+def invalidate_all_sessions():
+    """Termina TODAS as sessões: apaga o token ativo de cada utilizador (todos têm de entrar outra vez)."""
+    with get_connection() as conn:
+        conn.execute("UPDATE users SET active_session_token = NULL")
+
+
 def is_session_token_valid(user_id, token):
     """True se `token` ainda e o token de sessao ativo deste usuario no banco."""
     if not token:
