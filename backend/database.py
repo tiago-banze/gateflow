@@ -148,8 +148,8 @@ def get_connection():
 def get_connection_immediate():
     """
     Igual ao get_connection(), mas garante que a transação tenha a
-    exclusividade de escrita JÁ NA ABERTURA — antes até do primeiro
-    SELECT — em vez do padrão "deferred".
+    exclusividade de escrita JÁ NA ABERTURA, antes até do primeiro
+    SELECT, em vez do padrão "deferred".
 
     Por quê isso importa: sem isso, DUAS conexões podem fazer um SELECT
     de contagem (ex: "quantas cortesias já foram emitidas?") vendo o
@@ -162,7 +162,7 @@ def get_connection_immediate():
       já na abertura da transação.
     - PostgreSQL: não existe equivalente direto de "BEGIN IMMEDIATE"
       (MVCC não trava o banco inteiro por padrão). Em vez disso, usamos
-      um advisory lock transacional (`pg_advisory_xact_lock`) — um mutex
+      um advisory lock transacional (`pg_advisory_xact_lock`), um mutex
       lógico do Postgres que qualquer conexão pode tentar adquirir; a
       segunda conexão concorrente fica bloqueada até a primeira commitar
       ou dar rollback (o lock é liberado automaticamente nesse momento).
@@ -233,7 +233,7 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_guests_event_name ON guests (event_id, full_name);
 
             -- Índices de EXPRESSÃO: a checagem de duplicidade (find_duplicate_guest)
-            -- roda LOWER(email) e LOWER(full_name) — um índice normal não acelera
+            -- roda LOWER(email) e LOWER(full_name), um índice normal não acelera
             -- buscas com função. Sem isso, cada linha importada de uma planilha
             -- de 500-2000 convidados faz uma varredura completa da tabela (O(n)
             -- por linha = O(n²) no import inteiro). Com o índice de expressão,
@@ -259,7 +259,7 @@ def init_db():
         # --- Fase 2: Módulos A (convites/lista fechada) e B (público/bilhetes) ---
         # event_module NÃO usa CHECK constraint via ALTER TABLE (suporte
         # inconsistente entre versões do SQLite para ADD COLUMN + CHECK em
-        # tabelas já existentes) — a validação 'A'/'B' é feita em Python,
+        # tabelas já existentes), a validação 'A'/'B' é feita em Python,
         # antes de qualquer INSERT/UPDATE, no mesmo padrão já usado para
         # validar `role` no cadastro de usuários.
         _migrate_add_column_if_missing(conn, "events", "event_module", "TEXT")
@@ -272,7 +272,7 @@ def init_db():
         _migrate_add_column_if_missing(conn, "events", "capacity_total", "INTEGER")
 
         # Todo evento já existente antes da Fase 2 foi criado no fluxo
-        # "convite/lista fechada" original — migramos para event_module='A'
+        # "convite/lista fechada" original, migramos para event_module='A'
         # explicitamente (em vez de deixar NULL) para não quebrar nenhuma
         # lógica futura que assuma que event_module sempre tem um valor.
         conn.execute("UPDATE events SET event_module = 'A' WHERE event_module IS NULL")
@@ -328,7 +328,7 @@ def init_db():
         # existir): ADD COLUMN idempotente, mesmo padrão usado em todas as
         # outras migrações desta função. Depoimentos antigos, sem esta
         # migração, cairiam em NULL e sumiriam da landing (que agora só
-        # mostra status='approved') — por isso o DEFAULT 'pending' aqui é
+        # mostra status='approved'), por isso o DEFAULT 'pending' aqui é
         # importante: eles voltam a aparecer na fila de moderação do admin
         # em vez de desaparecer silenciosamente.
         _migrate_add_column_if_missing(conn, "feedbacks", "status", "TEXT NOT NULL DEFAULT 'pending'")
@@ -391,7 +391,7 @@ def init_db():
 
 def _migrate_users_multitenancy(conn):
     """
-    Migração estrutural (Fase 1 — Multi-Tenant): expande a tabela `users`
+    Migração estrutural (Fase 1, Multi-Tenant): expande a tabela `users`
     para suportar os 4 papéis do ecossistema GateFlow:
       - 'admin'       -> Super Admin (controle total da plataforma)
       - 'organizador' -> Dono de evento, cadastro autônomo (NOVO)
@@ -404,7 +404,7 @@ def _migrate_users_multitenancy(conn):
       - 'cliente'     -> legado, sem uso (sem venda de bilhetes).
 
     IMPORTANTE: usuários 'admin' e 'porteiro' já existentes NÃO são
-    renomeados nem tocados — apenas passam a caber num CHECK constraint
+    renomeados nem tocados, apenas passam a caber num CHECK constraint
     mais amplo. Nenhuma conta existente muda de comportamento.
 
     Como o SQLite não permite alterar uma CHECK constraint com ALTER
@@ -541,7 +541,7 @@ def create_event_full(organizador_id, name, organizer_display_name, location, ev
 
 def update_event_by_organizador(event_id, organizador_id, **fields):
     """
-    Atualiza um evento SOMENTE se pertencer ao organizador informado —
+    Atualiza um evento SOMENTE se pertencer ao organizador informado -
     a checagem de dono acontece dentro da MESMA query de UPDATE
     (WHERE id = ? AND organizador_id = ?), não como um SELECT separado
     antes: isso evita qualquer janela onde a posse poderia ser
@@ -574,7 +574,7 @@ def list_events():
     # existe para diferenciar, em produção, "a query é lenta" (aparece
     # aqui, no valor de duration_ms) de "algo fora da query é lento"
     # (abertura de conexão, lock de escrita concorrente, disco lento etc.
-    # — nesse caso duration_ms fica baixo mesmo com a rota /api/events
+    #, nesse caso duration_ms fica baixo mesmo com a rota /api/events
     # inteira demorando segundos).
     start = time.monotonic()
     with get_connection() as conn:
@@ -601,7 +601,7 @@ def list_events_owned_by(organizador_id):
     Retorna SOMENTE os eventos pertencentes a um Organizador específico.
     Esta é a query de ISOLAMENTO multi-tenant (Fase 1, item 2): o filtro
     `WHERE e.organizador_id = ?` acontece no próprio SQL, não em Python
-    depois de buscar tudo — um Organizador nunca recebe do banco sequer
+    depois de buscar tudo, um Organizador nunca recebe do banco sequer
     UMA linha de dado de outro Organizador.
     """
     start = time.monotonic()
@@ -999,7 +999,7 @@ def delete_guest(event_id, guest_id):
 
 
 def list_guests_alphabetical(event_id):
-    """Lista todos os convidados de um evento em ordem alfabética pelo nome — usado no PDF de contingência."""
+    """Lista todos os convidados de um evento em ordem alfabética pelo nome, usado no PDF de contingência."""
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT * FROM guests WHERE event_id = ? ORDER BY LOWER(full_name) ASC",
@@ -1020,7 +1020,7 @@ def checkin_guest(guest_id, checkin_by=None):
     vez do padrão "ler, checar em Python, depois escrever". Isso importa
     porque, se dois porteiros lerem o MESMO QR Code quase ao mesmo tempo,
     duas requisições podem chegar ao servidor com poucos milissegundos de
-    diferença — com "ler-depois-escrever", ambas poderiam passar pela
+    diferença, com "ler-depois-escrever", ambas poderiam passar pela
     checagem antes de qualquer uma gravar, e as duas receberiam "sucesso".
     Com o UPDATE atômico, o SQLite serializa as duas escritas: a primeira
     a chegar realmente atualiza a linha (rowcount=1); a segunda tenta
@@ -1097,7 +1097,7 @@ def get_event_stats(event_id):
 def create_user(username, password_hash, role, full_name="", email="", phone="", organizador_id=None):
     """
     Cria um usuário. `password_hash` já deve vir criptografado (Werkzeug
-    generate_password_hash) — esta camada nunca lida com senha em texto puro.
+    generate_password_hash), esta camada nunca lida com senha em texto puro.
     `role` deve ser 'admin', 'organizador', 'porteiro' ou 'cliente' (garantido
     pelo CHECK do schema). `organizador_id` só é usado para porteiros criados
     por um Organizador específico (None = porteiro global / demais papéis).
@@ -1134,7 +1134,7 @@ def email_exists(email):
 
 
 def count_porteiros_by_organizador(organizador_id):
-    """Conta quantos porteiros um Organizador já criou (usado para limitar a 3 — regra da Fase 2)."""
+    """Conta quantos porteiros um Organizador já criou (usado para limitar a 3, regra da Fase 2)."""
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT COUNT(*) AS total FROM users WHERE organizador_id = ? AND role = 'porteiro'",
@@ -1222,7 +1222,7 @@ def is_session_token_valid(user_id, token):
 
 
 def list_porteiros_by_organizador(organizador_id):
-    """Lista os porteiros ('porteiro do promotor') criados por este Organizador — metadados apenas, sem password_hash."""
+    """Lista os porteiros ('porteiro do promotor') criados por este Organizador, metadados apenas, sem password_hash."""
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT id, username, full_name, role, created_at FROM users "
@@ -1243,7 +1243,7 @@ def delete_porteiro_of_organizador(porteiro_id, organizador_id):
 
 
 def list_users():
-    """Não retorna password_hash, apenas metadados — usado em telas administrativas."""
+    """Não retorna password_hash, apenas metadados, usado em telas administrativas."""
     with get_connection() as conn:
         cursor = conn.execute(
             "SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at ASC"
@@ -1365,7 +1365,7 @@ def submit_rsvp_response(guest_id, response, companions_confirmed, source="web")
     """
     Grava a resposta de presença de um convidado: atualiza guests.rsvp_status
     (+ companions_confirmed) e insere uma linha em rsvp_responses (histórico
-    auditável — importante porque o convidado pode responder mais de uma vez
+    auditável, importante porque o convidado pode responder mais de uma vez
     ou por mais de um canal, ex: mudar de "vou" para "não vou" depois, ou
     responder pela página web e também pelo WhatsApp).
     """
@@ -1584,11 +1584,11 @@ def create_feedback(name, email, rating, comment):
     """
     Grava um novo depoimento público com status='pending'. A validação de
     formato (nome, e-mail, nota 1-5, tamanho do comentário) já aconteceu
-    em app.py antes de chegar aqui — esta função só persiste. `rating` é
+    em app.py antes de chegar aqui, esta função só persiste. `rating` é
     protegido também no schema (CHECK BETWEEN 1 AND 5), como defesa em
     profundidade.
 
-    Fica pendente até um admin aprovar em /admin/depoimentos — não
+    Fica pendente até um admin aprovar em /admin/depoimentos, não
     aparece na landing (list_feedbacks) nem no modal público até lá.
     """
     feedback_id = str(uuid.uuid4())
@@ -1612,14 +1612,14 @@ def get_feedback(feedback_id):
 
 def list_feedbacks(limit=None):
     """
-    Lista os depoimentos JÁ APROVADOS, mais recentes primeiro — é a única
+    Lista os depoimentos JÁ APROVADOS, mais recentes primeiro, é a única
     fonte usada pela landing pública (SSR inicial e o modal "ver todos"),
     então um depoimento nunca aparece publicamente antes de passar pela
     moderação em /admin/depoimentos. `limit` é usado pela landing page
     para trazer só os primeiros (ex: 6) já prontos via SSR; o modal
     "ver todos" busca sem limite, sob demanda (só quando o visitante
     realmente clica em abrir o modal). A query continua uma única SELECT
-    com índice em (status) — mesmo custo de antes, nada mais pesado.
+    com índice em (status), mesmo custo de antes, nada mais pesado.
     """
     query = "SELECT * FROM feedbacks WHERE status = 'approved' ORDER BY created_at DESC"
     params = ()
@@ -1634,9 +1634,9 @@ def list_feedbacks(limit=None):
 def list_pending_feedbacks():
     """
     Fila de moderação: depoimentos com status='pending', mais antigos
-    primeiro (FIFO — o admin limpa a fila na ordem em que chegaram). Só
+    primeiro (FIFO, o admin limpa a fila na ordem em que chegaram). Só
     usada pelo painel /admin/depoimentos (autenticado); nunca exposta
-    publicamente — a landing só enxerga status='approved' via
+    publicamente, a landing só enxerga status='approved' via
     list_feedbacks() acima.
     """
     with get_connection() as conn:
@@ -1656,7 +1656,7 @@ def approve_feedback(feedback_id):
 def reject_feedback(feedback_id):
     """
     Rejeita um depoimento (soft-reject: muda o status, não apaga a
-    linha) — mesmo padrão já usado no resto do sistema para estados
+    linha), mesmo padrão já usado no resto do sistema para estados
     finais (ex: pedidos 'expired'/'cancelled'): mantém rastro sem custo
     extra e continua reversível manualmente, sem perder o comentário
     original. Retorna True se algum registo foi alterado.

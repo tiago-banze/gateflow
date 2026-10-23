@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # A Vercel define automaticamente a variável VERCEL=1 em toda função
 # serverless. Usamos isso para decidir onde gravar arquivos: o
 # filesystem do deployment é SOMENTE LEITURA, exceto /tmp (que é
-# efêmero — some a qualquer momento entre invocações/cold starts).
+# efêmero, some a qualquer momento entre invocações/cold starts).
 IS_SERVERLESS = bool(os.environ.get("VERCEL"))
 
 # --- PostgreSQL (Neon.tech) em produção / SQLite em desenvolvimento local ---
@@ -32,7 +32,7 @@ DATABASE_URL = _raw_database_url
 USE_POSTGRES = bool(DATABASE_URL)
 
 # Diretório de dados persistentes. Em ambiente serverless não existe
-# disco persistente de verdade — usamos /tmp apenas para arquivos
+# disco persistente de verdade, usamos /tmp apenas para arquivos
 # realmente temporários (ex: geração de PDF/QR sob demanda antes de
 # devolver ao cliente). Nada gravado aqui sobrevive entre requisições
 # diferentes, então NUNCA deve ser a única cópia de um dado importante
@@ -56,7 +56,7 @@ UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 REQUIRED_XLSX_COLUMNS = ["Nome Completo", "Email", "Telefone", "Cargo/Tipo"]
 
 # Coluna opcional: se a planilha não tiver essa coluna (ou a célula estiver
-# vazia), o convidado recebe o valor padrão DEFAULT_TABLE_LABEL — não
+# vazia), o convidado recebe o valor padrão DEFAULT_TABLE_LABEL, não
 # quebra a importação nem exige atualizar planilhas antigas.
 OPTIONAL_XLSX_COLUMN_TABLE = "Mesa"
 DEFAULT_TABLE_LABEL = "Não definida"
@@ -85,19 +85,19 @@ SECRET_KEY_PATH = os.path.join(DATA_DIR, "secret.key")
 # Diretório onde o certificado HTTPS autoassinado (gerado automaticamente
 # na primeira execução) é armazenado. É necessário porque navegadores
 # modernos bloqueiam acesso à câmera (getUserMedia) em páginas servidas
-# por http:// que não sejam localhost — o que impediria o leitor de QR
+# por http:// que não sejam localhost, o que impediria o leitor de QR
 # Code de funcionar ao acessar o backend pelo IP da rede local.
 CERTS_DIR = os.path.join(DATA_DIR, "certs")
 
 # Duração da sessão de login (em minutos) por inatividade.
-SESSION_LIFETIME_MINUTES = 480  # 8 horas — cobre um turno de trabalho
+SESSION_LIFETIME_MINUTES = 480  # 8 horas, cobre um turno de trabalho
 
 # --- Convites / RSVP ---
 
 # URL pública do próprio GateFlow (ex: "https://meudominio.com"), usada
 # para montar o link pessoal de RSVP (/rsvp/<token>) enviado por
 # WhatsApp/SMS/e-mail. Se não configurada, cai para request.host_url em
-# tempo de execução — o que funciona na maioria dos casos, mas é menos
+# tempo de execução, o que funciona na maioria dos casos, mas é menos
 # confiável atrás de proxy/load balancer sem X-Forwarded-Host configurado
 # corretamente.
 PUBLIC_BASE_URL = os.environ.get("GATEFLOW_PUBLIC_BASE_URL", "").strip().rstrip("/")
@@ -118,7 +118,7 @@ def get_or_create_secret_key():
     Prioriza a variável de ambiente SECRET_KEY (uso obrigatório em
     produção/Vercel: cada cold start é uma execução nova e sem isso as
     sessões de login seriam invalidadas a cada requisição). Se ausente,
-    cai para uma chave persistida em disco — válido para desenvolvimento
+    cai para uma chave persistida em disco, válido para desenvolvimento
     local, onde o disco realmente persiste entre reinícios do servidor.
     """
     env_key = os.environ.get("SECRET_KEY", "").strip()

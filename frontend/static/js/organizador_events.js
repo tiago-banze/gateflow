@@ -1,5 +1,5 @@
 /**
- * organizador_events.js — lista de eventos do organizador, com pesquisa e filtros.
+ * organizador_events.js, lista de eventos do organizador, com pesquisa e filtros.
  */
 let allEvents = [];
 let activeFilter = "proximos";

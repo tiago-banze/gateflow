@@ -1,5 +1,5 @@
 /**
- * organizador_event_new.js — criação de evento; depois segue direto para adicionar convidados.
+ * organizador_event_new.js, criação de evento; depois segue direto para adicionar convidados.
  */
 document.addEventListener("DOMContentLoaded", () => {
   const dateInput = document.getElementById("event-date");

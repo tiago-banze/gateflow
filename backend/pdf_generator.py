@@ -30,7 +30,7 @@ PRIMARY_COLOR = colors.HexColor(config.COLOR_PRIMARY)
 # Assinatura do Administrador, aplicada no rodapé de TODAS as páginas de
 # TODOS os PDFs gerados (convites e contingência), como marca de
 # autenticidade do documento. Se o arquivo não existir, simplesmente não
-# desenha nada — nunca quebra a geração do PDF por causa disso.
+# desenha nada, nunca quebra a geração do PDF por causa disso.
 SIGNATURE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "signature_admin.png")
 SIGNATURE_NAME = "Tiago Victor Banze"
 SIGNATURE_ASPECT_RATIO = 174 / 804  # altura / largura da imagem original enviada
@@ -255,7 +255,7 @@ def _draw_header(c, event, page_width, page_height, page_num, page_count):
 
 
 # --------------------------------------------------------------------------
-# PDF DE CONTINGÊNCIA — plano de emergência offline
+# PDF DE CONTINGÊNCIA, plano de emergência offline
 # --------------------------------------------------------------------------
 
 CONTINGENCY_MARGIN = 15 * mm
@@ -268,8 +268,8 @@ CONTINGENCY_COLUMN_GAP = 10 * mm
 def generate_contingency_pdf(event, guests_alphabetical):
     """
     Gera um PDF minimalista de contingência: lista em ORDEM ALFABÉTICA
-    contendo apenas Nome e Mesa de cada convidado — sem QR Code, sem
-    dados de contato — pronto para imprimir rapidamente e permitir
+    contendo apenas Nome e Mesa de cada convidado, sem QR Code, sem
+    dados de contato, pronto para imprimir rapidamente e permitir
     check-in manual a caneta caso o sistema fique indisponível durante
     o evento (falha de energia, rede, etc.).
     """

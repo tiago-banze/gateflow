@@ -21,7 +21,7 @@
 
 <nav class="lp-navbar" aria-label="Principal">
   <div class="lp-navbar-inner">
-    <a href="{{ url_for('page_index') }}" class="lp-navbar-brand" aria-label="GateFlow — início">
+    <a href="{{ url_for('page_index') }}" class="lp-navbar-brand" aria-label="GateFlow, início">
       {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" alt="" width="36" height="36" onerror="this.style.display='none'" />{% endif %}
       GateFlow
     </a>
@@ -54,8 +54,8 @@
       <span class="lp-eyebrow">{{ icon('sparkles') }} Feito para portarias reais</span>
       <h1 class="lp-hero-title">A sua lista de convidados nunca mais fica <em>presa numa folha de papel</em>.</h1>
       <p class="lp-hero-sub">
-        Envie convites por WhatsApp, SMS ou e-mail, acompanhe as confirmações de presença em tempo real
-        e valide a entrada de cada convidado em segundos — na portaria, com QR Code, mesmo sem internet.
+        Faça um convite com QR Code para cada pessoa, veja quem confirmou e receba toda a gente à porta
+        sem papéis. Funciona no telemóvel, mesmo quando a internet falha.
       </p>
 
       <div class="lp-hero-ctas">
@@ -108,23 +108,23 @@
     <div class="lp-stats-grid">
       <div class="lp-stat-card">
         <div class="lp-stat-icon">{{ icon('clock') }}</div>
-        <div class="lp-stat-value">&lt; 3 segundos</div>
-        <div class="lp-stat-label">para validar cada convidado, mesmo com a fila grande</div>
+        <div class="lp-stat-value">Poucos segundos</div>
+        <div class="lp-stat-label">para deixar cada pessoa entrar, mesmo com fila</div>
       </div>
       <div class="lp-stat-card">
         <div class="lp-stat-icon">{{ icon('smartphone') }}</div>
-        <div class="lp-stat-value">100% mobile-first</div>
-        <div class="lp-stat-label">pensado para o ecrã do porteiro, não adaptado depois</div>
+        <div class="lp-stat-value">Feito para o telemóvel</div>
+        <div class="lp-stat-label">pensado para quem está de pé à porta, com uma mão livre</div>
       </div>
       <div class="lp-stat-card">
         <div class="lp-stat-icon">{{ icon('qr') }}</div>
-        <div class="lp-stat-value">1 QR único</div>
-        <div class="lp-stat-label">por convidado — impossível de duplicar ou reutilizar</div>
+        <div class="lp-stat-value">Um QR por pessoa</div>
+        <div class="lp-stat-label">o mesmo convite não entra duas vezes</div>
       </div>
       <div class="lp-stat-card">
         <div class="lp-stat-icon">{{ icon('wifi-off') }}</div>
-        <div class="lp-stat-value">Resiste à falta de rede</div>
-        <div class="lp-stat-label">a portaria continua a validar com a lista guardada no aparelho</div>
+        <div class="lp-stat-value">Sem internet, sem problema</div>
+        <div class="lp-stat-label">a porta continua a funcionar com a lista guardada no aparelho</div>
       </div>
     </div>
   </div>
@@ -134,25 +134,25 @@
   <div class="lp-section-inner">
     <div class="lp-section-head">
       <div class="lp-section-eyebrow">O que oferecemos</div>
-      <h2 class="lp-section-title">Tudo o que um evento precisa, num só lugar</h2>
-      <p class="lp-section-sub">Da lista de convidados até ao último acesso na porta.</p>
+      <h2 class="lp-section-title">O essencial para receber bem os seus convidados</h2>
+      <p class="lp-section-sub">Da lista até à última pessoa a entrar.</p>
     </div>
 
     <div class="lp-services-grid">
       <div class="lp-service-card">
         <div class="lp-service-icon">{{ icon('ticket') }}</div>
         <h3>Convites digitais</h3>
-        <p>Crie a página do seu evento e emita convites para cada convidado, com um QR Code seguro e único, pronto a enviar na hora.</p>
+        <p>Crie o seu evento e faça um convite para cada pessoa, com o seu QR Code, pronto a imprimir.</p>
       </div>
       <div class="lp-service-card">
         <div class="lp-service-icon">{{ icon('scan') }}</div>
         <h3>Check-in do porteiro</h3>
-        <p>Na entrada, o porteiro lê o QR Code ou procura o convidado por nome — a confirmação e a mesa aparecem no ecrã em segundos.</p>
+        <p>Na porta, o porteiro lê o QR Code ou procura o nome, e vê logo a mesa.</p>
       </div>
       <div class="lp-service-card">
         <div class="lp-service-icon">{{ icon('bar-chart') }}</div>
         <h3>Painel de gestão</h3>
-        <p>Organizadores e administradores acompanham convidados, mesas e entradas confirmadas em tempo real, de qualquer lugar.</p>
+        <p>Veja quem confirmou e quem já entrou, esteja onde estiver.</p>
       </div>
     </div>
   </div>
@@ -174,12 +174,12 @@
       <div class="lp-step">
         <div class="lp-step-number">02</div>
         <h3>Emita os convites com QR Code</h3>
-        <p>Cada convidado recebe um convite digital com um QR Code único, pronto a enviar por WhatsApp.</p>
+        <p>Cada convidado tem o seu QR Code, pronto a pôr no convite.</p>
       </div>
       <div class="lp-step">
         <div class="lp-step-number">03</div>
         <h3>Faça o check-in na porta</h3>
-        <p>O porteiro lê o QR Code (ou procura o nome) e a entrada fica validada e registada instantaneamente.</p>
+        <p>O porteiro lê o QR Code (ou procura o nome) e a entrada fica registada na hora.</p>
       </div>
     </div>
   </div>
@@ -191,14 +191,14 @@
       <span class="lp-story-quote">{{ icon('quote') }}</span>
       <p>
         O GateFlow nasceu numa noite real, à porta de um casamento onde fomos chamados para
-        ser porteiros. Não havia sistema nenhum — só uma brochura de folhas soltas com os nomes
+        ser porteiros. Não havia sistema nenhum, só uma brochura de folhas soltas com os nomes
         dos convidados. Cada pessoa chegava, dizia o nome, e lá íamos nós à procura dele página
         por página. Às vezes o nome não aparecia. Às vezes passava sem sermos capazes de o
         confirmar direito. A fila crescia, e o stress também.
       </p>
       <p>
         Foi essa noite que nos fez perguntar: <strong>porque é que ainda fazemos isto no papel?</strong>
-        O GateFlow existe para que nenhum porteiro tenha de passar pelo que passámos ali — hoje
+        O GateFlow existe para que nenhum porteiro tenha de passar pelo que passámos ali, hoje
         basta um QR Code e uma leitura para o convidado já estar dentro.
       </p>
       <div class="lp-story-sign"><span class="avatar">TB</span><div>Tiago Banze<small>Criador do GateFlow</small></div></div>
@@ -241,7 +241,7 @@
       <div class="lp-access-card lp-access-card--highlight">
         <div class="lp-access-icon">{{ icon('mail') }}</div>
         <h3>É convidado(a)?</h3>
-        <p>Vai receber o seu link pessoal de confirmação de presença por WhatsApp, SMS ou e-mail — não precisa de conta nem de procurar nada aqui.</p>
+        <p>Vai receber o seu link pessoal de confirmação de presença por WhatsApp, SMS ou e-mail, não precisa de conta nem de procurar nada aqui.</p>
       </div>
     </div>
   </div>
@@ -268,7 +268,7 @@
         <p class="lp-testimonial-comment">{{ feedback.comment }}</p>
       </div>
       {% else %}
-      <p class="lp-testimonial-empty">Ainda não há depoimentos — seja o primeiro a partilhar a sua experiência.</p>
+      <p class="lp-testimonial-empty">Ainda não há depoimentos, seja o primeiro a partilhar a sua experiência.</p>
       {% endfor %}
     </div>
 

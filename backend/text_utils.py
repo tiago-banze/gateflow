@@ -1,6 +1,6 @@
 """
 text_utils.py
-Utilitários de texto — atualmente apenas a geração de nomes de arquivo
+Utilitários de texto, atualmente apenas a geração de nomes de arquivo
 seguros (slug) a partir de texto livre, usada para nomear os PDFs de
 convites dinamicamente com base no nome do evento.
 """

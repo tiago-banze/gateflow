@@ -1,5 +1,5 @@
 /**
- * organizador_dashboard.js — Início do Organizador: próximo evento, atalhos e eventos recentes.
+ * organizador_dashboard.js, Início do Organizador: próximo evento, atalhos e eventos recentes.
  */
 document.addEventListener("DOMContentLoaded", loadDashboard);
 

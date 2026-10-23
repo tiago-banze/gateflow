@@ -1,7 +1,7 @@
 /**
  * landing.js
  * Depoimentos/Avaliações da landing page:
- *  - "Ver mais" nos cartões já renderizados via SSR (index.html) — não
+ *  - "Ver mais" nos cartões já renderizados via SSR (index.html), não
  *    depende de nenhuma chamada de rede, só mede o texto que já está no HTML.
  *  - Modal "Ver todos os comentários": busca a lista completa em
  *    GET /api/feedbacks só na primeira vez que é aberto (fica em cache
@@ -9,7 +9,7 @@
  *  - Formulário de novo depoimento: POST /api/feedbacks.
  *
  * Mantém a landing leve de propósito: nenhum fetch dispara sozinho no
- * carregamento da página — os depoimentos iniciais já vêm prontos do
+ * carregamento da página, os depoimentos iniciais já vêm prontos do
  * servidor (window não precisa de nada aqui além do que o HTML já tem).
  */
 
@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /**
  * Adiciona o botão "Ver mais/Ver menos" só nos comentários que o CSS
- * (-webkit-line-clamp: 4) realmente cortou — comentários curtos não
+ * (-webkit-line-clamp: 4) realmente cortou, comentários curtos não
  * ganham botão nenhum. Funciona tanto para os cartões SSR quanto para
  * os que o modal insere depois.
  */
@@ -119,7 +119,7 @@ async function openTestimonialsModal() {
   lpAllFeedbacksCache = result.data || [];
 
   if (lpAllFeedbacksCache.length === 0) {
-    listEl.innerHTML = `<p class="lp-testimonial-empty">Ainda não há depoimentos — sê o primeiro a partilhar a tua experiência.</p>`;
+    listEl.innerHTML = `<p class="lp-testimonial-empty">Ainda não há depoimentos, sê o primeiro a partilhar a tua experiência.</p>`;
     return;
   }
 

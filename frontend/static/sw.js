@@ -1,10 +1,10 @@
 /**
- * sw.js — Service Worker do check-in offline-first.
+ * sw.js, Service Worker do check-in offline-first.
  *
  * Objetivo único: garantir que a TELA de check-in (HTML + CSS + JS) e o
  * leitor de QR continuam a abrir mesmo sem internet no local do evento.
  * A validação dos convidados em si (dados) fica a cargo do IndexedDB,
- * gerido por offline_checkin.js — este ficheiro só cuida dos "ficheiros
+ * gerido por offline_checkin.js, este ficheiro só cuida dos "ficheiros
  * estáticos" (o "app shell").
  *
  * Estratégia:

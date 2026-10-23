@@ -1,17 +1,17 @@
 """
 ssl_utils.py
 Gera (uma única vez) um certificado HTTPS autoassinado para o servidor
-Flask, usando o binário `openssl` já presente no sistema operacional —
+Flask, usando o binário `openssl` já presente no sistema operacional -
 sem exigir nenhuma nova dependência pip (evitando pyOpenSSL).
 
 Por quê isso é necessário: navegadores modernos (Chrome, Firefox, Safari)
 bloqueiam o acesso à câmera (getUserMedia, usado pelo leitor de QR Code)
-em páginas servidas por http:// que não sejam "localhost" — o que
+em páginas servidas por http:// que não sejam "localhost", o que
 inclui exatamente o cenário deste sistema (acessar o backend pelo IP da
 rede local, ex: http://192.168.1.10:5000). Servir a mesma aplicação por
 https://, mesmo com um certificado autoassinado (não validado por uma
 autoridade certificadora), já é suficiente para o navegador considerar a
-origem como "segura" e liberar a câmera — o aviso de "conexão não segura"
+origem como "segura" e liberar a câmera, o aviso de "conexão não segura"
 que aparece uma vez é esperado e inofensivo neste contexto de rede local
 fechada.
 """
@@ -59,7 +59,7 @@ def ensure_self_signed_cert():
         return None, None
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         # Falha ao gerar (openssl muito antigo, sem suporte a -addext, etc.)
-        # — remove qualquer arquivo parcial para não deixar um certificado corrompido
+        #, remove qualquer arquivo parcial para não deixar um certificado corrompido
         for path in (cert_path, key_path):
             if os.path.exists(path):
                 try:

@@ -1,10 +1,10 @@
-{# Open Graph / Twitter Card — controla como o link aparece quando é
+{# Open Graph / Twitter Card, controla como o link aparece quando é
    partilhado no WhatsApp, Facebook, etc. (título, descrição, imagem).
    Cada página pode personalizar definindo as variáveis og_title e
    og_description (via {% set og_title = "..." %}) ANTES de incluir este parcial. #}
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="GateFlow" />
-<meta property="og:title" content="{{ og_title | default('GateFlow — Gestão de Convites e Check-in por QR Code') }}" />
+<meta property="og:title" content="{{ og_title | default('GateFlow: Gestão de Convites e Check-in por QR Code') }}" />
 <meta property="og:description" content="{{ og_description | default('Simplifique o controlo de entrada no seu evento com convites digitais e validação instantânea por QR Code. Sem filas e sem listas em papel.') }}" />
 <meta property="og:url" content="{{ request.url }}" />
 {% if gateflow_logo_available %}
@@ -13,5 +13,5 @@
 <meta property="og:image:height" content="512" />
 {% endif %}
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="{{ og_title | default('GateFlow — Gestão de Convites e Check-in por QR Code') }}" />
+<meta name="twitter:title" content="{{ og_title | default('GateFlow: Gestão de Convites e Check-in por QR Code') }}" />
 <meta name="twitter:description" content="{{ og_description | default('Simplifique o controlo de entrada no seu evento com convites digitais e validação instantânea por QR Code.') }}" />

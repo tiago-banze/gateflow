@@ -1,7 +1,7 @@
 /* ==========================================================================
-   GateFlow — Design System (style.css)
+   GateFlow, Design System (style.css)
    --------------------------------------------------------------------------
-   Identidade: Navy profundo (#071A26) + Verde esmeralda (#0C956D) — as duas
+   Identidade: Navy profundo (#071A26) + Verde esmeralda (#0C956D), as duas
    cores do logótipo. Neutros levemente esverdeados (mais suaves para os olhos
    do que cinza puro) e superfícies brancas/azul-marinho com bordas finas.
 
@@ -10,7 +10,7 @@
    • Contraste WCAG AA (texto ≥ 4.5:1, ícones/UI ≥ 3:1) nos dois temas.
    • Alvos de toque ≥ 44px (portaria com tablet/telemóvel, muitas vezes com pressa).
    • Ícones SVG (traço 2px) em vez de emojis; cor nunca é a única pista.
-   • Movimento discreto (150–250ms) e desligado em prefers-reduced-motion.
+   • Movimento discreto (150-250ms) e desligado em prefers-reduced-motion.
 
    Compatibilidade: os nomes de variáveis antigos (--color-*) foram mantidos
    e apontam para os novos tokens; JS e templates antigos continuam a funcionar.

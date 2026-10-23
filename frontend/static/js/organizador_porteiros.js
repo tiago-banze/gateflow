@@ -1,5 +1,5 @@
 /**
- * organizador_porteiros.js — contas de porteiro do organizador.
+ * organizador_porteiros.js, contas de porteiro do organizador.
  */
 document.addEventListener("DOMContentLoaded", () => {
   loadPorteiros();

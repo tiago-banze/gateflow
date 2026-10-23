@@ -1,4 +1,4 @@
-/* landing.css — página pública (/). Prefixo lp-. Usa só os tokens de style.css. */
+/* landing.css, página pública (/). Prefixo lp-. Usa só os tokens de style.css. */
 .lp-body { background: var(--color-bg); }
 .lp-inner { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 3vw, 32px); }
 

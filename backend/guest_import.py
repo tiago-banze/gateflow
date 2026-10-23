@@ -5,7 +5,7 @@ Leitura SEGURA de listas de convidados (.xlsx, .csv ou texto colado).
 Segurança:
   - extensões em lista branca (.xlsx, .csv) e limite de tamanho;
   - o conteúdo é verificado (assinatura ZIP para .xlsx, sem bytes nulos
-    em .csv) — a extensão sozinha não chega;
+    em .csv), a extensão sozinha não chega;
   - .xlsx com macros (vbaProject), ligações externas, objetos incorporados
     ou "zip bomb" são recusados; nada é executado, só lemos valores;
   - cada célula é limpa: caracteres de controlo removidos, tamanho limitado

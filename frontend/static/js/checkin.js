@@ -37,7 +37,7 @@ function updateOfflineIndicator() {
   const el = document.getElementById("offline-indicator");
   if (!el) return;
   if (!navigator.onLine) {
-    el.innerHTML = `${icon("wifi-off", 18)} <span>Sem internet — a validar com a lista guardada neste aparelho</span>`;
+    el.innerHTML = `${icon("wifi-off", 18)} <span>Sem internet, a validar com a lista guardada neste aparelho</span>`;
     el.classList.remove("hidden");
     return;
   }

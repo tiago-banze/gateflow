@@ -426,10 +426,10 @@ def page_privacidade():
 # PÁGINAS (FRONT-END SERVIDO PELO PRÓPRIO FLASK)
 # --------------------------------------------------------------------------
 
-# Quantos depoimentos vêm prontos (SSR) na landing page — o suficiente
+# Quantos depoimentos vêm prontos (SSR) na landing page, o suficiente
 # para preencher a seção sem round-trip extra no primeiro load. A lista
 # COMPLETA só é buscada sob demanda, quando o visitante abre o modal
-# "Ver todos os comentários" (ver GET /api/feedbacks) — mantém o load
+# "Ver todos os comentários" (ver GET /api/feedbacks), mantém o load
 # inicial da landing leve mesmo com centenas de depoimentos acumulados.
 LANDING_FEEDBACKS_PREVIEW_COUNT = 6
 
@@ -503,7 +503,7 @@ def page_login():
         _security_log("login_falhou", user=username, ip=client_ip)
         error = "Utilizador ou senha incorretos."
 
-    # 'intent' só ajusta o texto exibido no formulário (não concede acesso —
+    # 'intent' só ajusta o texto exibido no formulário (não concede acesso -
     # o papel real vem do banco de dados após a autenticação). 'panel'
     # permite abrir a tela já com o painel de Cadastro ativo (ex: link
     # "Criar Conta" vindo de outra página).
@@ -515,7 +515,7 @@ def page_login():
 @app.route("/organizador/cadastro", methods=["GET", "POST"])
 def page_organizador_signup():
     """
-    Cadastro autônomo (self-service) de novos Organizadores — Fase 1,
+    Cadastro autônomo (self-service) de novos Organizadores, Fase 1,
     item 2. Qualquer pessoa pode se cadastrar sem depender de um Super
     Admin criar a conta manualmente.
     """
@@ -564,10 +564,10 @@ def page_organizador_signup():
             session["session_token"] = db.start_new_user_session(user["id"])
             return redirect(url_for("page_organizador_dashboard"))
 
-    # Ponto único de acesso (Fase 5 — redesign do login): tanto o GET
+    # Ponto único de acesso (Fase 5, redesign do login): tanto o GET
     # quanto um erro de validação no POST mantêm a pessoa na MESMA tela
     # de Login/Cadastro (painel deslizante), com o painel de cadastro
-    # já ativo — nunca mais uma página separada por tipo de fluxo.
+    # já ativo, nunca mais uma página separada por tipo de fluxo.
     return render_template("login.html", signup_error=error, active_panel="signup")
 
 
@@ -606,7 +606,7 @@ def page_organizador_porteiros():
 @app.route("/organizador/eventos/<event_id>")
 @role_required_page("organizador")
 def page_organizador_event_detail(event_id):
-    """Gerenciamento de um evento específico do Organizador — ownership obrigatória."""
+    """Gerenciamento de um evento específico do Organizador, ownership obrigatória."""
     current_user = get_current_user()
     if not db.event_belongs_to_organizador(event_id, current_user["id"]):
         abort(404)
@@ -735,7 +735,7 @@ def page_checkin_event(event_id):
     if not event:
         abort(404)
     if not _porteiro_can_access_event(get_current_user(), event):
-        abort(404)  # evento existe, mas fora do escopo deste porteiro — tratado como inexistente
+        abort(404)  # evento existe, mas fora do escopo deste porteiro, tratado como inexistente
     event["status"] = event_status.compute_event_status(event.get("event_date"))
     return render_template(
         "checkin.html",
@@ -754,7 +754,7 @@ def _list_events_for_user(current_user):
 
     Centraliza a regra de isolamento de porteiros do promotor (Fase 5,
     item C) num único lugar, usado tanto por /api/events quanto pela
-    renderização inicial (SSR) de /admin e /checkin — garante que os
+    renderização inicial (SSR) de /admin e /checkin, garante que os
     dois caminhos nunca fiquem dessincronizados.
     """
     if current_user["role"] == "porteiro" and current_user.get("organizador_id"):
@@ -835,7 +835,7 @@ def api_organizador_create_event():
 @app.route("/api/organizador/events/<event_id>", methods=["GET"])
 @role_required_api("organizador")
 def api_organizador_get_event(event_id):
-    """Detalhe de um evento — SOMENTE se pertencer ao Organizador autenticado."""
+    """Detalhe de um evento, SOMENTE se pertencer ao Organizador autenticado."""
     try:
         current_user = get_current_user()
         if not db.event_belongs_to_organizador(event_id, current_user["id"]):
@@ -861,7 +861,7 @@ def _clean_http_url(value):
 @app.route("/api/organizador/events/<event_id>", methods=["PUT"])
 @role_required_api("organizador")
 def api_organizador_update_event(event_id):
-    """Edição de evento pelo Organizador — ownership + bloqueio de evento encerrado."""
+    """Edição de evento pelo Organizador, ownership + bloqueio de evento encerrado."""
     try:
         current_user = get_current_user()
         current_event = db.get_event(event_id)
@@ -1050,7 +1050,7 @@ def api_organizador_import_guests(event_id):
 
 
 # ============================================================================
-# FASE 6 — DEPOIMENTOS/AVALIAÇÕES PÚBLICAS (LANDING PAGE)
+# FASE 6, DEPOIMENTOS/AVALIAÇÕES PÚBLICAS (LANDING PAGE)
 # ============================================================================
 
 _FEEDBACK_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -1061,7 +1061,7 @@ FEEDBACK_NAME_MAX_LENGTH = 80
 def _public_feedback_payload(feedback):
     """
     Campos do depoimento seguros para expor publicamente. O e-mail NUNCA
-    é devolvido em texto puro — só o hash MD5 (exigido pelo protocolo do
+    é devolvido em texto puro, só o hash MD5 (exigido pelo protocolo do
     Gravatar) embutido já pronto na avatar_url, para o frontend não
     precisar calcular hash nenhum nem ver o e-mail de quem comentou.
     """
@@ -1083,7 +1083,7 @@ def _public_feedback_payload(feedback):
 @app.route("/api/feedbacks", methods=["GET"])
 @limiter.limit("60 per minute")
 def api_list_feedbacks():
-    """Lista os depoimentos JÁ APROVADOS — usado pelo modal 'Ver todos os comentários' da landing page."""
+    """Lista os depoimentos JÁ APROVADOS, usado pelo modal 'Ver todos os comentários' da landing page."""
     try:
         feedbacks = db.list_feedbacks()
     except db.DatabaseError as exc:
@@ -1152,7 +1152,7 @@ def page_admin_feedbacks():
     Fila de moderação de depoimentos: só aprovados aparecem na landing
     (ver db.list_feedbacks), então todo depoimento novo passa por aqui
     primeiro. A lista pendente já vem pronta via SSR (mesmo padrão de
-    /admin e /checkin) — sem fetch extra no primeiro paint.
+    /admin e /checkin), sem fetch extra no primeiro paint.
     """
     try:
         pending_feedbacks = db.list_pending_feedbacks()
@@ -1755,7 +1755,7 @@ def api_organizador_list_porteiros():
 def api_organizador_create_porteiro():
     """
     Cria um porteiro vinculado a ESTE Organizador ('porteiro do promotor'
-    — Fase 5, item C4): só valida check-in dos eventos deste promotor
+   , Fase 5, item C4): só valida check-in dos eventos deste promotor
     (ver `_porteiro_can_access_event`). Limite de 3 por Organizador.
     """
     current_user = get_current_user()
@@ -1822,7 +1822,7 @@ def api_download_guest_template_csv():
 def api_download_guest_template():
     """
     Gera e retorna um .xlsx modelo com as colunas EXATAS exigidas pelo
-    validador de import (_parse_guests_xlsx / REQUIRED_XLSX_COLUMNS) —
+    validador de import (_parse_guests_xlsx / REQUIRED_XLSX_COLUMNS) -
     incluindo Email e Telefone, que são obrigatórios de verdade no
     sistema hoje, mesmo que a Fase 2 tenha pedido um modelo mais
     enxuto (Nome, Cargo/Tipo, Mesa). Gerar o modelo enxuto faria o
@@ -2003,7 +2003,7 @@ def api_create_guest_manual(event_id):
         return jsonify({"success": True, "data": guest}), 201
     except db.DatabaseError as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
-    except Exception:  # noqa: BLE001 — garante resposta JSON mesmo em erro inesperado
+    except Exception:  # noqa: BLE001, garante resposta JSON mesmo em erro inesperado
         app.logger.error("Erro inesperado no cadastro manual de convidado: %s", traceback.format_exc())
         return jsonify({"success": False, "error": "Não foi possível guardar o convidado. Tente outra vez."}), 500
 
@@ -2256,7 +2256,7 @@ def api_export_contingency_pdf(event_id):
 @app.route("/api/events/<event_id>/guests/attendance-report", methods=["GET"])
 @role_required_api("admin")
 def api_export_attendance_report(event_id):
-    """Relatório de presença em CSV (quem compareceu / quem faltou) — útil após o evento encerrar."""
+    """Relatório de presença em CSV (quem compareceu / quem faltou), útil após o evento encerrar."""
     event = db.get_event(event_id)
     if not event:
         return jsonify({"success": False, "error": "Não encontrámos este evento."}), 404
@@ -2394,7 +2394,7 @@ def api_list_users():
 def api_create_user():
     """
     Cria um novo usuário (admin ou porteiro). Qualquer usuário autenticado
-    com papel 'admin' pode criar novos perfis — não há distinção especial
+    com papel 'admin' pode criar novos perfis, não há distinção especial
     de "super admin": o primeiro admin (criado automaticamente no primeiro
     boot) tem exatamente as mesmas permissões que qualquer outro admin
     criado depois.
@@ -2445,8 +2445,8 @@ def api_invalidate_all_sessions():
 
 if __name__ == "__main__":
     # HTTPS automático é OPCIONAL (desligado por padrão). Em alguns Chrome
-    # — principalmente em computadores/telemóveis com política corporativa
-    # ou gerenciados por uma empresa/escola — o botão "Continuar mesmo
+    #, principalmente em computadores/telemóveis com política corporativa
+    # ou gerenciados por uma empresa/escola, o botão "Continuar mesmo
     # assim" do aviso de certificado autoassinado fica bloqueado e a
     # página nunca carrega. Para esses casos, o caminho mais confiável é
     # liberar a câmera diretamente no navegador (ver README, seção de
@@ -2471,7 +2471,7 @@ if __name__ == "__main__":
 
     if scheme == "https":
         print(">> IMPORTANTE: o navegador vai mostrar um aviso de 'conexão não segura' na")
-        print(">> primeira vez que cada tablet acessar — isso é ESPERADO (é um certificado")
+        print(">> primeira vez que cada tablet acessar, isso é ESPERADO (é um certificado")
         print(">> autoassinado, gerado só para permitir o uso da câmera). Toque em 'Avançado'")
         print(">> e depois em 'Acessar mesmo assim' / 'Prosseguir'. Isso só aparece uma vez.")
     else:

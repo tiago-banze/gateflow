@@ -11,7 +11,7 @@
     <!-- Mini-cabeçalho fixo (só móvel) -->
     <div class="event-mini-sticky" id="event-mini-sticky">
       <span class="event-mini-name">{{ event.name }}</span>
-      <span class="event-mini-count" id="event-mini-count">—/—</span>
+      <span class="event-mini-count" id="event-mini-count">-/-</span>
     </div>
 
     <div class="page-header">
@@ -35,7 +35,7 @@
     {% if event.status.code == 'encerrado' %}
     <div class="event-ended-banner">
       {{ icon('info') }}
-      <div>Este evento já foi encerrado — novos check-ins estão bloqueados. Esta tela é apenas para consulta e exportação de relatórios.</div>
+      <div>Este evento já foi encerrado, novos check-ins estão bloqueados. Esta tela é apenas para consulta e exportação de relatórios.</div>
     </div>
     {% endif %}
 

@@ -96,7 +96,7 @@ Conectando ao PostgreSQL (Neon)... OK.
 Criando/migrando tabelas (idempotente, seguro rodar mais de uma vez)... OK.
 Nenhum usuário encontrado -- criando usuários padrão... OK.
 ========================================================================
-!! USUÁRIOS PADRÃO CRIADOS — TROQUE AS SENHAS IMEDIATAMENTE APÓS O LOGIN !!
+!! USUÁRIOS PADRÃO CRIADOS, TROQUE AS SENHAS IMEDIATAMENTE APÓS O LOGIN !!
    Admin      -> usuário: admin      senha: TrocarSenha@123
    Porteiro   -> usuário: porteiro   senha: TrocarSenha@123
 ========================================================================

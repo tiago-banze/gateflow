@@ -1,4 +1,4 @@
-# Segurança — passos a fazer (fora do código)
+# Segurança, passos a fazer (fora do código)
 
 O histórico antigo do Git contém chaves, certificados, a base de dados antiga (convidados) e uma senha padrão.
 O código atual já está limpo. Faça isto por ordem:

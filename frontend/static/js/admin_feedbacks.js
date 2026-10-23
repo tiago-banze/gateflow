@@ -2,7 +2,7 @@
  * admin_feedbacks.js
  * Fila de moderação de depoimentos (/admin/depoimentos).
  * A lista pendente já vem pronta via SSR (window.__INITIAL_PENDING_FEEDBACKS__),
- * então não há fetch nenhum no carregamento — só nas ações de Aprovar/Rejeitar.
+ * então não há fetch nenhum no carregamento, só nas ações de Aprovar/Rejeitar.
  */
 
 document.addEventListener("DOMContentLoaded", () => {

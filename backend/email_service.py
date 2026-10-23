@@ -214,7 +214,7 @@ def send_rsvp_reminder_email(to_address, guest_name, event_name, event_date_labe
     body = (
         f"Olá {guest_name},\n\nLembrete: {event_name} é {event_date_label}.\n"
         + (f"Localização: {maps_url}\n" if maps_url else "")
-        + "O seu QR Code de acesso está em anexo — apresente-o na entrada.\n\nAté lá!\nEquipa GateFlow"
+        + "O seu QR Code de acesso está em anexo, apresente-o na entrada.\n\nAté lá!\nEquipa GateFlow"
     )
     where = (
         f'<p><a href="{html.escape(maps_url, quote=True)}">Ver localização no mapa</a></p>' if maps_url else ""

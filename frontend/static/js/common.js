@@ -6,7 +6,7 @@
  */
 
 
-/* >>> GF-ICONS (gerado por tools/gen_icons.py — não editar à mão) >>> */
+/* >>> GF-ICONS (gerado por tools/gen_icons.py, não editar à mão) >>> */
 const GF_ICONS = {
   "arrow-left": "<path d=\"M19 12H5\"/><path d=\"m12 19-7-7 7-7\"/>",
   "arrow-right": "<path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/>",
@@ -187,7 +187,7 @@ function formatDateTime(isoOrDatetimeLocal) {
  }
 }
 
-/** Linha de metadados padrão (local + data) com ícones — usada nas listas de eventos. */
+/** Linha de metadados padrão (local + data) com ícones, usada nas listas de eventos. */
 function eventMetaHtml(location, isoDate) {
  return `<span class="meta-item">${icon("map-pin", 15)} ${escapeHtml(location || "Local não informado")}</span>` +
  `<span class="meta-item">${icon("calendar", 15)} ${escapeHtml(formatDateTime(isoDate))}</span>`;
@@ -215,7 +215,7 @@ function renderEventsListWithFade(listEl, html) {
  return new Promise((resolve) => {
  listEl.style.opacity = "0";
  // requestAnimationFrame garante que o navegador já pintou o frame com
- // opacity:0 antes de trocarmos o conteúdo — é essa troca (innerHTML) que
+ // opacity:0 antes de trocarmos o conteúdo, é essa troca (innerHTML) que
  // recalcula o layout e causava o salto visível.
  requestAnimationFrame(() => {
  listEl.innerHTML = html;
@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // O .topbar é `position: sticky; top: 0`, mas sua altura muda entre
 // breakpoints (quebra em 2 linhas no mobile). Elementos que precisam
 // grudar logo ABAIXO dele (.search-bar, .event-mini-sticky) usavam um
-// valor fixo em px que só era correto numa tela — isto lê a altura real
+// valor fixo em px que só era correto numa tela, isto lê a altura real
 // do elemento renderizado e expõe como custom property, recalculada a
 // cada resize/orientação para acompanhar mudanças de layout.
 // --------------------------------------------------------------------------

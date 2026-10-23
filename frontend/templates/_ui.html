@@ -1,5 +1,5 @@
 {#- ==========================================================================
-   _ui.html — componentes reutilizáveis do GateFlow (design system)
+   _ui.html, componentes reutilizáveis do GateFlow (design system)
    Uso:  {% from "_ui.html" import icon, topbar, theme_toggle with context %}
    - icon(nome, tamanho=20, cls="")  -> SVG inline (herda a cor via currentColor)
    - topbar(subtitulo)               -> barra superior padrão; o bloco {% call %}
@@ -86,7 +86,7 @@
 
 {% macro topbar(subtitle) -%}
 <header class="topbar">
-  <a class="brand" href="{{ url_for('page_index') }}" aria-label="GateFlow — página inicial">
+  <a class="brand" href="{{ url_for('page_index') }}" aria-label="GateFlow, página inicial">
     {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" class="navbar-logo" width="40" height="40" alt="" onerror="this.onerror=null;this.src='{{ url_for('serve_asset', filename='GateFlow.png') }}'" />{% endif %}
     <span class="brand-text"><span class="brand-name">GateFlow</span><span class="subtitle">{{ subtitle }}</span></span>
   </a>
@@ -106,7 +106,7 @@
 
 
 {#- ==========================================================================
-   APP SHELL — estrutura de navegação das áreas autenticadas (mobile-first)
+   APP SHELL, estrutura de navegação das áreas autenticadas (mobile-first)
    Uso:
      {% from "_ui.html" import app_shell with context %}
      {% call app_shell("Eventos", active="events", back=url_for('...')) %}
@@ -147,7 +147,7 @@
   <a class="appbar-back" href="{{ back }}" data-back aria-label="{{ back_label }}">{{ icon('arrow-left', 22) }}</a>
   <button type="button" class="appbar-back appbar-forward" data-forward aria-label="Avançar" hidden>{{ icon('arrow-right', 22) }}</button>
   {% else %}
-  <a class="appbar-logo" href="{{ nav and url_for(nav[0][2]) or url_for('page_index') }}" aria-label="GateFlow — início">
+  <a class="appbar-logo" href="{{ nav and url_for(nav[0][2]) or url_for('page_index') }}" aria-label="GateFlow, início">
     {% if gateflow_logo_available %}<img src="{{ url_for('serve_asset', filename='GateFlow-mark.png') }}" width="32" height="32" alt="" onerror="this.onerror=null;this.src='{{ url_for('serve_asset', filename='GateFlow.png') }}'" />{% endif %}
   </a>
   {% endif %}

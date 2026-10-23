@@ -32,7 +32,7 @@ async function loadEvents({ silent = false } = {}) {
 
  if (!result.success) {
  // Numa revalidação silenciosa, um erro não deve derrubar a lista que
- // já está na tela (possivelmente vinda do SSR) — só loga e mantém.
+ // já está na tela (possivelmente vinda do SSR), só loga e mantém.
  if (!silent) {
  renderEventsListWithFade(listEl, `<div class="empty-state">Não foi possível carregar os eventos: ${escapeHtml(result.error || "desconhecido")}</div>`);
  }
@@ -45,7 +45,7 @@ async function loadEvents({ silent = false } = {}) {
 /**
  * Pinta allEventsCache + o card do próximo evento + a lista de eventos a
  * partir de um array de eventos já pronto (vindo do SSR ou da API).
- * `fade: false` pula a transição de opacidade do skeleton — usado só no
+ * `fade: false` pula a transição de opacidade do skeleton, usado só no
  * primeiro paint quando os dados já chegam junto com o HTML.
  */
 async function applyEvents(events, { fade = true } = {}) {

@@ -36,7 +36,7 @@ async function loadEvents({ silent = false } = {}) {
 /**
  * Pinta o card do próximo evento + a lista de eventos a partir de um
  * array de eventos já pronto (vindo do SSR ou da API). `fade: false`
- * pula a transição de opacidade do skeleton — usado só no primeiro
+ * pula a transição de opacidade do skeleton, usado só no primeiro
  * paint, quando os dados já chegam junto com o HTML.
  */
 async function applyEvents(events, { fade = true } = {}) {

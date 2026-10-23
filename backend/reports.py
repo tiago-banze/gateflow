@@ -1,6 +1,6 @@
 """
 reports.py
-Geração do Relatório de Presença em CSV — usado depois que um evento
+Geração do Relatório de Presença em CSV, usado depois que um evento
 encerra, para o organizador exportar e enviar aos donos do evento quem
 compareceu e quem faltou. CSV puro (biblioteca padrão do Python, sem
 dependências novas) abre direto no Excel/Google Sheets.

@@ -3,7 +3,7 @@ event_status.py
 Calcula o status apresentável de um evento (Próximo / Em Andamento /
 Encerrado) a partir da data cadastrada, comparando com a data de hoje.
 Mantido separado do database.py porque é lógica de apresentação, não de
-persistência — o "hoje" muda a cada chamada, não faz sentido guardá-lo.
+persistência, o "hoje" muda a cada chamada, não faz sentido guardá-lo.
 """
 
 import os
@@ -108,15 +108,15 @@ def sort_events_for_display(events):
     """
     Ordena eventos para exibição nos painéis (Admin e Porteiro).
 
-    Regra de negócio (avaliada e validada — ver observação abaixo): NÃO é
+    Regra de negócio (avaliada e validada, ver observação abaixo): NÃO é
     uma ordenação ingênua por data crescente, porque isso colocaria
     eventos MUITO ANTIGOS no topo da lista (a data mais antiga é a "menor"
     numericamente). O que faz sentido operacionalmente numa portaria é:
 
       1º) Eventos futuros ou de hoje, do mais PRÓXIMO de agora para o mais
-          distante — é isso que o porteiro/admin precisa ver primeiro,
+          distante, é isso que o porteiro/admin precisa ver primeiro,
           para agir.
-      2º) Eventos já encerrados, do mais RECENTE para o mais antigo — úteis
+      2º) Eventos já encerrados, do mais RECENTE para o mais antigo, úteis
           para consulta/relatório, mas não precisam competir por atenção
           com o que está em andamento ou por vir.
 

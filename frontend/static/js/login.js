@@ -1,5 +1,5 @@
 /**
- * login.js — abas Entrar / Criar conta (acessíveis: role=tab, aria-selected,
+ * login.js, abas Entrar / Criar conta (acessíveis: role=tab, aria-selected,
  * setas ← → do teclado) e mostrar/ocultar palavra-passe.
  * O servidor decide a aba inicial (data-panel no #login-container).
  */

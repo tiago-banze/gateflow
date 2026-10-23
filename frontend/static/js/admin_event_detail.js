@@ -144,12 +144,12 @@ async function loadGuests(search) {
 }
 
 // --------------------------------------------------------------------------
-// CONVITE POR E-MAIL (envio manual / reenvio) — Módulo A
+// CONVITE POR E-MAIL (envio manual / reenvio), Módulo A
 // --------------------------------------------------------------------------
 
 function renderInviteCell(g) {
  if (!g.email) {
- return `<span class="badge badge-muted" title="Sem e-mail registado">—</span>`;
+ return `<span class="badge badge-muted" title="Sem e-mail registado">-</span>`;
  }
 
  let badge;

@@ -81,7 +81,7 @@ class LoginAttemptTracker:
 login_attempt_tracker = LoginAttemptTracker()
 
 
-IP_MAX_ATTEMPTS = 30  # falhas por IP (qualquer utilizador) na janela — trava rotação de nomes de utilizador
+IP_MAX_ATTEMPTS = 30  # falhas por IP (qualquer utilizador) na janela, trava rotação de nomes de utilizador
 
 
 class SharedLoginAttemptTracker:

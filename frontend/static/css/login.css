@@ -1,4 +1,4 @@
-/* login.css — acesso: painel de marca + cartão com abas (Entrar / Criar conta) */
+/* login.css, acesso: painel de marca + cartão com abas (Entrar / Criar conta) */
 .auth-shell { flex: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); min-height: 100vh; }
 
 .auth-aside {

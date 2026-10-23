@@ -1,5 +1,5 @@
 /* ==========================================================================
-   events.css — "cara de eventos" + componentes de importação/envio/leitura.
+   events.css, "cara de eventos" + componentes de importação/envio/leitura.
    Ficheiro carregado depois de style.css e appshell.css.
    ========================================================================== */
 
@@ -137,7 +137,7 @@ body[data-event-status] .guest-card .checked-label { width: 100%; min-height: 48
 .import-actions { margin-top: 14px; position: sticky; bottom: 0; padding: 10px 0 2px; background: var(--color-card); }
 .sheet-footer { flex-wrap: wrap; }
 
-/* 4. Telemóvel: menos scroll — tudo o essencial visível sem rolar ------------ */
+/* 4. Telemóvel: menos scroll, tudo o essencial visível sem rolar ------------ */
 @media (max-width: 699px) {
   /* Separadores do evento: 4 colunas fixas (sem deslizar para os lados) */
   .seg-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; overflow: visible; padding: 8px clamp(16px, 3vw, 32px); }

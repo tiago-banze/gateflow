@@ -1,7 +1,7 @@
 /* ==========================================================================
    legal.css
    Páginas institucionais (Sobre, Termos de Uso, Política de Privacidade).
-   Mesma identidade visual do resto do GateFlow — só tipografia de leitura
+   Mesma identidade visual do resto do GateFlow, só tipografia de leitura
    longa, mais respirada que o SaaS em si.
    ========================================================================== */
 
@@ -127,7 +127,7 @@
 }
 
 /* -------------------------------------------------------------------- */
-/* Grade de "Sobre o Sistema" — como funciona, em 3 passos               */
+/* Grade de "Sobre o Sistema", como funciona, em 3 passos               */
 /* -------------------------------------------------------------------- */
 .about-hero {
   text-align: center;

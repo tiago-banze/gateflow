@@ -215,7 +215,7 @@ function renderChannels() {
   const defs = [["whatsapp", "WhatsApp", "message"], ["sms", "SMS", "phone"], ["email", "E-mail", "mail"]];
   const any = defs.some(([k]) => ch[k].configured);
   box.innerHTML = `
-    ${any ? "" : `<div class="notice is-warning">${icon("alert")}<div><strong>Envio ainda não ativo.</strong> O servidor não tem nenhum canal (WhatsApp, SMS ou e-mail) configurado. Peça ao administrador para configurar — enquanto isso, pode copiar o link de cada convidado e enviar à mão.</div></div>`}
+    ${any ? "" : `<div class="notice is-warning">${icon("alert")}<div><strong>Envio ainda não ativo.</strong> O servidor não tem nenhum canal (WhatsApp, SMS ou e-mail) configurado. Peça ao administrador para configurar, enquanto isso, pode copiar o link de cada convidado e enviar à mão.</div></div>`}
     <div class="channel-grid">
       ${defs.map(([k, label, ico]) => `
         <div class="channel ${ch[k].configured ? "is-on" : "is-off"}">
@@ -334,7 +334,7 @@ async function runBulkSend(kind) {
     report.innerHTML = `
       ${sent ? `<div class="ok">${icon("check", 15)} ${sent} enviado(s) com sucesso.</div>` : ""}
       ${failed.length ? `<div style="color:var(--color-error);font-weight:700;margin-top:6px">${failed.length} não enviado(s):</div>
-        <ul>${failed.slice(0, 8).map((f) => `<li>${escapeHtml(f.name)} — ${escapeHtml(f.error || "erro")}</li>`).join("")}</ul>
+        <ul>${failed.slice(0, 8).map((f) => `<li>${escapeHtml(f.name)}, ${escapeHtml(f.error || "erro")}</li>`).join("")}</ul>
         ${failed.length > 8 ? `<small>…e mais ${failed.length - 8}.</small>` : ""}` : ""}`;
   }
   if (sent) showToast(`${sent} ${isInvite ? "convite(s)" : "lembrete(s)"} enviado(s).`, "success");

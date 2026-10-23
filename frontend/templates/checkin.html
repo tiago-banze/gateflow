@@ -23,7 +23,7 @@
     {% if event.status.code == 'encerrado' %}
     <div class="event-ended-banner">
       {{ icon('info') }}
-      <div>Este evento já foi encerrado — <strong>novos check-ins estão bloqueados</strong>.
+      <div>Este evento já foi encerrado, <strong>novos check-ins estão bloqueados</strong>.
       Esta tela mostra apenas as estatísticas finais (quem compareceu e quem faltou).</div>
     </div>
     {% endif %}
@@ -31,7 +31,7 @@
     <!-- Mini-cabeçalho fixo (só móvel): nome + contador sempre visíveis ao rolar -->
     <div class="event-mini-sticky" id="event-mini-sticky">
       <span class="event-mini-name">{{ event.name }}</span>
-      <span class="event-mini-count" id="event-mini-count">—/—</span>
+      <span class="event-mini-count" id="event-mini-count">-/-</span>
     </div>
 
     <div class="stats-bar" id="stats-bar"></div>
